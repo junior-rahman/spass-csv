@@ -15,3 +15,7 @@ One file you open in Chrome on your phone. The `.spass` export stays on the phon
 Once the page is open, converting does not use the internet. Delete the CSV after you import it.
 
 Not affiliated with Samsung.
+
+## Install the app
+
+Download [Pass-to-CSV.apk](Pass-to-CSV.apk), open it, and allow install. Android 10 or newer. The page runs on the phone. The CSV is saved in Downloads.
