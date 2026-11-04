@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Samsung Pass to CSV</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f3f1ec;
+        --card: #fffcf8;
+        --ink: #1c1916;
+        --muted: #5e5953;
+        --faint: #7a746c;
+        --line: #e3ddd4;
+        --accent: #1e3a34;
+        --accent-fg: #f4f1ea;
+        --danger: #8c3b32;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.5 "Roboto", "Noto Sans", "Segoe UI", system-ui, sans-serif;
+      }
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+      .shell {
+        max-width: 32rem;
+        margin: 0 auto;
+        padding: max(1.25rem, env(safe-area-inset-top)) 1rem max(2rem, env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      h1 { font-size: 1.25rem; line-height: 1.25; margin: 0; }
+      p { margin: 0; }
+      .muted { color: var(--muted); font-size: 0.875rem; }
+      .faint { color: var(--faint); font-size: 0.875rem; }
+      .danger { color: var(--danger); font-size: 0.875rem; }
+      .strong { font-weight: 600; }
+      .label { font-size: 0.875rem; font-weight: 600; margin-top: 0.75rem; }
+      .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 0.875rem; word-break: break-all; margin-top: 0.5rem; }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 1.75rem;
+        padding: 1rem;
+      }
+      .note { border-radius: 0.75rem; }
+      .stack, .field { display: flex; flex-direction: column; gap: 0.5rem; }
+      .row { display: flex; gap: 0.5rem; }
+      .row > * { flex: 1; }
+      .spread { align-items: flex-start; }
+      .spread > :first-child { min-width: 0; }
+      .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .steps { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.875rem; display: flex; flex-direction: column; gap: 0.35rem; }
+      .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+      input[type="file"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      input:not([type="file"]) {
+        min-height: 3rem;
+        width: 100%;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        border-radius: 0.75rem;
+        padding: 0 0.75rem;
+      }
+      input:focus-visible, button:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); outline-offset: 2px; }
+      .btn {
+        min-height: 3rem;
+        border-radius: 0.75rem;
+        border: 1px solid transparent;
+        padding: 0 1rem;
+        font-weight: 600;
+      }
+      .btn.primary { background: var(--accent); color: var(--accent-fg); }
+      .btn.ghost { background: var(--card); color: var(--ink); border-color: var(--line); }
+      .btn.slim { min-height: 2.75rem; font-size: 0.875rem; }
+      .btn.icon { width: 4.5rem; flex: 0 0 auto; }
+      .btn:disabled { opacity: 0.6; }
+      .link { min-height: 2.75rem; background: none; border: 0; color: var(--muted); font-weight: 600; }
+      .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; background: var(--paper); border-radius: 0.75rem; padding: 0.25rem; }
+      .seg button { min-height: 2.75rem; border: 0; border-radius: 0.5rem; background: transparent; font-weight: 600; }
+      .seg button.on { background: var(--accent); color: var(--accent-fg); }
+      label.btn { display: flex; align-items: center; justify-content: center; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
