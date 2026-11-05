@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F4EF" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C1917" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; script-src 'sha256-Pw6fz+wvdV/IhUNUngVuYr2HvHV8LoG7RgaXFpXdNuw='" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; script-src 'sha256-pzj12niOlB+rAdgGJaKWynrExvpFjrBJE3gHvRrF+yg='" />
     <meta name="description" content="Spcc — Spass to CSV Converter" />
     <title>Spcc</title>
     <style>
@@ -1113,7 +1113,7 @@ ${line}` : line;
       } else {
         body = [
           el("h2", { class: "title-large" }, ["About & privacy"]),
-          el("p", {}, ["Spcc (Spass to CSV Converter) converts a Samsung Pass .spass export on this device. Nothing is uploaded. No accounts, analytics, or telemetry. The app never updates itself \u2014 get updates from Google Play or GitHub Releases."]),
+          el("p", {}, ["Spcc (Spass to CSV Converter) converts a Samsung Pass .spass export on this device. Nothing is uploaded. No accounts, analytics, or telemetry. The Android app may contact Google Play only to check for and apply updates (Play In-App Updates); conversion stays on-device and the WebView has no network access."]),
           el("p", { class: "muted" }, ["Not affiliated with Samsung."]),
           el("div", { class: "sheet-actions" }, [el("button", { type: "button", class: "btn filled", onclick: close }, ["Done"])])
         ];

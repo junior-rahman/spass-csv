@@ -6,7 +6,8 @@ const manifest = readFileSync("android/app/src/main/AndroidManifest.xml", "utf8"
 const activity = readFileSync("android/app/src/main/java/com/jrrahman/passtocsv/MainActivity.kt", "utf8");
 const gradle = readFileSync("android/app/build.gradle.kts", "utf8");
 
-for (const perm of ["android.permission.INTERNET", "android.permission.REQUEST_INSTALL_PACKAGES"]) {
+// INTERNET is allowed solely for Google Play In-App Updates.
+for (const perm of ["android.permission.REQUEST_INSTALL_PACKAGES"]) {
   if (manifest.includes(perm)) fail.push(`manifest must not request ${perm}`);
 }
 if (!/android:allowBackup="false"/.test(manifest)) fail.push("allowBackup must be false");
@@ -18,6 +19,9 @@ if (!activity.includes('"https://appassets.androidplatform.net"')) fail.push("br
 for (const banned of ["ServerSocket", "PackageInstaller", "version.json", "downloadAndInstall", "addJavascriptInterface", "unlockSpass", "http://127.0.0.1"]) {
   if (activity.includes(banned)) fail.push(`MainActivity must not contain ${banned}`);
 }
+if (!activity.includes("AppUpdateManager") || !activity.includes("com.google.android.play.core.appupdate")) fail.push("Play In-App Updates (AppUpdateManager) missing from MainActivity");
+if (!gradle.includes("com.google.android.play:app-update")) fail.push("play app-update dependency missing");
+if (!activity.includes("shouldInterceptRequest") || !activity.includes("request.url.host != ASSET_HOST")) fail.push("WebView must stay offline (asset loader + host gate)");
 if (!/allowFileAccess = false/.test(activity) || !/allowContentAccess = false/.test(activity)) fail.push("file/content access must be off");
 if (!/isMinifyEnabled = true/.test(gradle)) fail.push("release must enable R8");
 if (!/applicationId = "com.jrrahman.passtocsv"/.test(gradle)) fail.push("applicationId must stay com.jrrahman.passtocsv");

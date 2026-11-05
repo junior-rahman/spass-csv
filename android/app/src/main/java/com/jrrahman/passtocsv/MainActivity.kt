@@ -13,13 +13,23 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import com.google.android.play.core.appupdate.AppUpdateInfo
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
 import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
@@ -34,6 +44,14 @@ class MainActivity : AppCompatActivity() {
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
     }
+
+    // Google Play In-App Updates: Play shows the UI and installs; we never download APKs ourselves.
+    private lateinit var appUpdateManager: AppUpdateManager
+    private var updatePromptShown = false
+    private val installListener = InstallStateUpdatedListener { state ->
+        if (state.installStatus() == InstallStatus.DOWNLOADED) promptCompleteUpdate()
+    }
+    private val updateFlow = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { /* cancel/fail: retry next launch */ }
 
     private val pickFile = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val uri = result.data?.data
@@ -113,6 +131,43 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.loadUrl("$ASSET_ORIGIN/assets/index.html")
+
+        appUpdateManager = AppUpdateManagerFactory.create(this)
+        appUpdateManager.registerListener(installListener)
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
+            if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
+                when {
+                    info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE) -> startUpdate(info, AppUpdateType.FLEXIBLE)
+                    info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) -> startUpdate(info, AppUpdateType.IMMEDIATE)
+                }
+            }
+        }
+    }
+
+    private fun startUpdate(info: AppUpdateInfo, type: Int) {
+        runCatching {
+            appUpdateManager.startUpdateFlowForResult(info, updateFlow, AppUpdateOptions.newBuilder(type).build())
+        }
+    }
+
+    private fun promptCompleteUpdate() {
+        if (updatePromptShown || isFinishing) return
+        updatePromptShown = true
+        AlertDialog.Builder(this)
+            .setTitle("Update ready")
+            .setMessage("A new version of Spcc has been downloaded by Google Play. Restart to install it.")
+            .setPositiveButton("Restart") { _, _ -> appUpdateManager.completeUpdate() }
+            .setNegativeButton("Later") { _, _ -> updatePromptShown = false }
+            .show()
+    }
+
+    private fun resumeUpdateIfNeeded() {
+        if (!::appUpdateManager.isInitialized) return
+        appUpdateManager.appUpdateInfo.addOnSuccessListener { info ->
+            if (info.installStatus() == InstallStatus.DOWNLOADED) promptCompleteUpdate()
+            else if (info.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS &&
+                info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) startUpdate(info, AppUpdateType.IMMEDIATE)
+        }
     }
 
     override fun onPause() {
@@ -123,10 +178,12 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         webView.onResume()
+        resumeUpdateIfNeeded()
     }
 
     override fun onDestroy() {
         pendingCsv = null
+        if (::appUpdateManager.isInitialized) appUpdateManager.unregisterListener(installListener)
         webView.destroy()
         super.onDestroy()
     }

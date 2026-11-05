@@ -305,7 +305,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     } else {
       body = [
         el("h2", { class: "title-large" }, ["About & privacy"]),
-        el("p", {}, ["Spcc (Spass to CSV Converter) converts a Samsung Pass .spass export on this device. Nothing is uploaded. No accounts, analytics, or telemetry. The app never updates itself — get updates from Google Play or GitHub Releases."]),
+        el("p", {}, ["Spcc (Spass to CSV Converter) converts a Samsung Pass .spass export on this device. Nothing is uploaded. No accounts, analytics, or telemetry. The Android app may contact Google Play only to check for and apply updates (Play In-App Updates); conversion stays on-device and the WebView has no network access."]),
         el("p", { class: "muted" }, ["Not affiliated with Samsung."]),
         el("div", { class: "sheet-actions" }, [el("button", { type: "button", class: "btn filled", onclick: close }, ["Done"])])
       ];

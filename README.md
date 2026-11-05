@@ -6,7 +6,7 @@ Not affiliated with Samsung.
 
 ## Get it
 
-- **Android app:** Google Play, or the signed APK on [GitHub Releases](https://github.com/junior-rahman/spass-csv/releases). The app never updates itself.
+- **Android app:** Google Play, or the signed APK on [GitHub Releases](https://github.com/junior-rahman/spass-csv/releases). When installed from Play, the app shows Play's in-app update prompt (Play downloads and installs; the app contacts Google Play only for this). Sideloaded/debug APKs won't see the prompt. Conversion stays on-device; the WebView has no network.
 - **Web page:** download `samsung-pass-to-csv.html` from a release and open it in Chrome. It works offline and its Content-Security-Policy blocks all network requests (`connect-src 'none'`).
 
 ### Verify a downloaded APK
