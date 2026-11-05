@@ -8,7 +8,7 @@
 
 ## Intent and decision authority
 
-Audit and refine the whole app UI against Warm Grove / P2 Soft: fix usability, accessibility, and flow honesty before visual polish. Preserve the trusted local conversion experience rather than adding screens or changing CSV semantics. This document captures the approved brainstorm and is self-contained input for writing-plans; it is not an implementation plan. Where earlier audit suggestions conflict, the explicit decisions here win: Delete incomplete applies immediately with Undo; Convert stays in the scroll pane; destination cards receive a full redesign; the feature graphic includes a phone mock.
+Audit and refine the whole app UI against Warm Grove / P2 Soft: fix usability, accessibility, and flow honesty before visual polish. Preserve the trusted local conversion experience rather than adding screens or changing CSV semantics. This document captures the approved brainstorm and is self-contained input for writing-plans; it is not an implementation plan. Where earlier audit suggestions conflict, the explicit decisions here win: Delete incomplete applies immediately with Undo; incomplete rows are fixed by editing fields in place and Saving (no Keep-with-placeholders); Convert stays in the scroll pane; destination cards receive a full redesign; the feature graphic includes a phone mock.
 
 ## Scope and preserved contracts
 
@@ -21,7 +21,7 @@ Keep:
 - Device-controlled theme only; no theme toggle.
 - Current import flow: destination picker before export and post-Save guidance. Destinations remain 1Password, Google Password Manager, Apple Passwords, and Bitwarden. Preserve default 1Password and last-choice persistence; changing destination never auto-saves.
 - Existing conversion, editing, privacy, and CSV rules. Never invent websites or passwords. Preserve export-password versus Samsung-account clarity and the plaintext warning before Save.
-- 1Password headerless Title,Website,Username,Password,Notes with blank missing websites and no OTP in Notes. Google retains its current headers, `no url` fallback and note/OTP behavior; Apple retains OTPAuth; Bitwarden retains its headers and login_totp. Existing placeholder behavior otherwise stays unchanged.
+- 1Password headerless Title,Website,Username,Password,Notes with blank missing websites and no OTP in Notes. Google retains its current headers, `no url` fallback and note/OTP behavior; Apple retains OTPAuth; Bitwarden retains its headers and login_totp. On Save, CSV still uses format-specific missing-website rules (`no url` only for Google; blank otherwise). Do **not** invent passwords. Incomplete UI no longer offers Keep-with-placeholders (`no title` / `no username`); users edit missing fields or Delete.
 - Existing post-unlock Clear/Save affordances. No new cards/addresses onboarding screens.
 
 ## Sheets and accessibility
@@ -33,7 +33,9 @@ Apply one consistent sheet contract to destination, incomplete, plaintext, guide
 - Limit the sheet to approximately 85vh; give its body a scroll region and keep action buttons sticky and reachable. Long content, short phones, and an on-screen keyboard must not clip actions or headings.
 - Preserve visible focus treatment and at least 48dp touch targets. Destination selection must have accessible checked state and standard radio-group keyboard arrow navigation. The file-picker trigger must be keyboard-focusable.
 
-**Delete incomplete:** Delete N applies immediately to the unlocked vault and preview, then shows an undo toast with a clearly labeled Undo action. Undo restores the removed rows and the corresponding preview/count state for that deletion. Cancelling a later plaintext/save dialog must not silently reverse or hide this immediate action. Do not defer deletion until Save. Undo data is sensitive vault data: Clear, a new file, and background clearing must invalidate it; Undo must never resurrect a cleared vault. The toast must be perceivable and operable by keyboard and assistive technology.
+**Incomplete logins:** The incomplete sheet lists every login missing title, username, or website. Tap a row to edit those fields in place; Save changes commits edits and drops the login from Incomplete when title, username, and website are all filled. Passwords stay empty when missing — never invent one. Host/username is used as a real title only when Samsung already supplied one.
+
+**Delete incomplete:** There is no Keep-with-placeholders action. Delete applies immediately to the unlocked vault and preview, then shows an undo toast with a clearly labeled Undo action. Undo restores the removed rows and the corresponding preview/count state for that deletion. Cancelling a later plaintext/save dialog must not silently reverse or hide this immediate action. Do not defer deletion until Save. Undo data is sensitive vault data: Clear, a new file, and background clearing must invalidate it; Undo must never resurrect a cleared vault. The toast must be perceivable and operable by keyboard and assistive technology.
 
 **Empty states:** Wire/use `.empty-search` for a short, calm Grove no-results message. Distinguish no matching search results from an empty vault; neither may render as an unexplained blank list. Do not imply a conversion error when there are simply no records.
 

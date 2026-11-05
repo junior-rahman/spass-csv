@@ -53,7 +53,7 @@ People export for the wrong password manager, then hit 1Password’s Label step 
 | Apple | Title,URL,Username,Password,Notes,OTPAuth | Blank | OTPAuth column (unchanged) |
 | Bitwarden | Existing headers | Blank | login_totp (unchanged) |
 
-Incomplete Save warn still lists every login missing title/username/website for all formats. “Keep with placeholders” still fills `no title` / `no username`; website placeholder `no url` only for Google.
+Incomplete Save warn still lists every login missing title/username/website for all formats. Users edit missing fields in place and Save, or Delete (immediate + Undo). **Keep with placeholders is removed** — do not write `no title` / `no username`. Website on Save: `no url` only for Google; blank for 1Password/Apple/Bitwarden. Passwords stay empty when missing.
 
 ## Data flow
 
