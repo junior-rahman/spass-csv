@@ -70,8 +70,8 @@ button, input { font: inherit; color: inherit; }
 .btn.wide { width: 100%; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .icon-btn { background: none; border: 0; padding: 8px; border-radius: 50%; cursor: pointer; }
-.icon { display: inline-block; width: 20px; height: 20px; }
-.icon::before { content: attr(data-icon); font-family: "Material Symbols Outlined", sans-serif; font-size: 0; }
+.icon { display: inline-block; width: 20px; height: 20px; vertical-align: middle; }
+.icon svg { width: 20px; height: 20px; display: block; fill: currentColor; }
 .chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .chip { min-height: 40px; border-radius: 12px; border: 1px solid var(--card-border); background: transparent; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
 .chip.selected { background: var(--primary-container); color: var(--on-primary-container); border-color: transparent; }
