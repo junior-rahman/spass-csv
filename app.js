@@ -637,15 +637,25 @@ ${line}` : line;
     const candidate = globalThis.passBridge;
     return candidate && typeof candidate.postMessage === "function" ? candidate : null;
   }
+  var SAVE_TIMEOUT_MS = 6e4;
   var androidPlatform = (b) => ({
     save(fileName, csv) {
       return new Promise((resolve) => {
+        let settled = false;
+        const settle = (ok) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          b.onmessage = null;
+          resolve(ok);
+        };
+        const timer = setTimeout(() => settle(false), SAVE_TIMEOUT_MS);
         b.onmessage = (event) => {
           try {
             const reply = JSON.parse(event.data);
-            if (reply.type === "saved") resolve(reply.ok === true);
+            if (reply.type === "saved") settle(reply.ok === true);
           } catch {
-            resolve(false);
+            settle(false);
           }
         };
         b.postMessage(JSON.stringify({ type: "save", fileName, csv }));

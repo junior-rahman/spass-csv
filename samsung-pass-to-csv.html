@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F4EF" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C1917" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; script-src 'sha256-bXc5ngHyx5yK6lliiJOGeRm7duhrYn87wOJuB4lSYqE='" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; script-src 'sha256-VIQdncOqA8W6d7900815ZTSE4uLfN9dTrNRkVOLyDxY='" />
     <meta name="description" content="Spcc — Spass to CSV Converter" />
     <title>Spcc</title>
     <style>
@@ -749,15 +749,25 @@ ${line}` : line;
     const candidate = globalThis.passBridge;
     return candidate && typeof candidate.postMessage === "function" ? candidate : null;
   }
+  var SAVE_TIMEOUT_MS = 6e4;
   var androidPlatform = (b) => ({
     save(fileName, csv) {
       return new Promise((resolve) => {
+        let settled = false;
+        const settle = (ok) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          b.onmessage = null;
+          resolve(ok);
+        };
+        const timer = setTimeout(() => settle(false), SAVE_TIMEOUT_MS);
         b.onmessage = (event) => {
           try {
             const reply = JSON.parse(event.data);
-            if (reply.type === "saved") resolve(reply.ok === true);
+            if (reply.type === "saved") settle(reply.ok === true);
           } catch {
-            resolve(false);
+            settle(false);
           }
         };
         b.postMessage(JSON.stringify({ type: "save", fileName, csv }));

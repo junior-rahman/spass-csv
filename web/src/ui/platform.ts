@@ -14,15 +14,27 @@ function bridge(): WebMessageBridge | null {
   return candidate && typeof candidate.postMessage === "function" ? candidate : null;
 }
 
+/** Android save replies must always settle; a lost reply resolves false instead of hanging the UI. */
+export const SAVE_TIMEOUT_MS = 60_000;
+
 const androidPlatform = (b: WebMessageBridge): Platform => ({
   save(fileName, csv) {
     return new Promise((resolve) => {
+      let settled = false;
+      const settle = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        b.onmessage = null;
+        resolve(ok);
+      };
+      const timer = setTimeout(() => settle(false), SAVE_TIMEOUT_MS);
       b.onmessage = (event) => {
         try {
           const reply = JSON.parse(event.data) as { type: string; ok: boolean };
-          if (reply.type === "saved") resolve(reply.ok === true);
+          if (reply.type === "saved") settle(reply.ok === true);
         } catch {
-          resolve(false);
+          settle(false);
         }
       };
       b.postMessage(JSON.stringify({ type: "save", fileName, csv }));
