@@ -8,3 +8,8 @@ android/local.properties
 android/keystore.properties
 *.jks
 *.keystore
+
+# Built binaries never go in git
+*.apk
+*.aab
+/dist/

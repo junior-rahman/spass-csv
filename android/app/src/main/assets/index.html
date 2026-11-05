@@ -303,6 +303,19 @@ label.btn:active { box-shadow: var(--focus-ring); }
 }
 .gap-list { list-style: none; margin: 0; padding: 0 4px; max-height: 40vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 0.875rem; border: 1px solid var(--card-border); border-radius: 12px; padding: 8px 12px; }
 .gap-list li { word-break: break-word; }
+
+/* Destination picker */
+.dests { display: flex; flex-direction: column; gap: 8px; }
+.dest {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 48px; padding: 0 16px; width: 100%;
+  border-radius: 12px; border: 1px solid var(--card-border);
+  background: var(--chip-bg); color: inherit; font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.dest:focus-visible { outline: 3px solid var(--fern); outline-offset: 2px; }
+.dest.selected { background: var(--primary-container, var(--primary)); color: var(--on-primary-container, inherit); border-color: var(--primary); }
+.dest-summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.guide-steps { margin: 8px 0 16px; padding-left: 1.4em; display: flex; flex-direction: column; gap: 10px; line-height: 1.45; }
     </style>
   </head>
   <body>

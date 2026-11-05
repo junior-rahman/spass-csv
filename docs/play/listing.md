@@ -1,6 +1,7 @@
 # Play Store listing — Spcc
 
 **Title:** Spcc
+**Price:** Paid app — USD $2.99 one-time (lifetime). No subscription, no ads, no in-app purchases. Set in Play Console → Monetize → App pricing (local prices auto-converted).
 **Subtitle / short description:** Spass to CSV Converter — Samsung Pass export converter, on-device, nothing uploaded.
 
 **Full description:**

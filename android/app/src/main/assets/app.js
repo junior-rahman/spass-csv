@@ -566,7 +566,7 @@ ${line}` : line;
       return toCsv(
         // 1Password's official layout: headerless Title,Website,Username,Password,Notes (labelled once in their UI).
         ["Title", "Website", "Username", "Password", "Notes"],
-        logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otpUri || l.otp)]),
+        logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.note]),
         ["Password"],
         false,
         true
@@ -637,10 +637,10 @@ ${line}` : line;
 
   // web/src/lib/formats.ts
   var FORMATS = [
-    { id: "1password", label: "1Password", fileName: "samsung-pass-1password.csv", hint: "Import at my.1password.com \u2192 Import \u2192 CSV. On the Label step pick, left to right: Title, Website, Username, Password, Notes. One-time codes are in Notes." },
-    { id: "google", label: "Google", fileName: "samsung-pass-google.csv", hint: "Chrome \u2192 Password Manager \u2192 Settings \u2192 Import. One-time codes go in the note." },
-    { id: "apple", label: "Apple", fileName: "samsung-pass-apple.csv", hint: "Settings \u2192 Apps \u2192 Passwords \u2192 Import passwords. One-time codes go in OTPAuth." },
-    { id: "bitwarden", label: "Bitwarden", fileName: "samsung-pass-bitwarden.csv", hint: "Import as Bitwarden (csv). Logins and notes are in this file. Cards are separate." }
+    { id: "1password", label: "1Password", fileName: "samsung-pass-1password.csv", hint: "Import at my.1password.com \u2192 Import \u2192 CSV. On the Label step pick, left to right: Title, Website, Username, Password, Notes.", importSteps: ["Open my.1password.com in a browser and sign in.", "Go to Import \u2192 CSV File and upload the saved CSV.", "On the Label step, set columns left to right: Title, Website, Username, Password, Notes.", "Blank Website cells are OK \u2014 add real URLs later so autofill works.", "Tap Continue, then delete the CSV (it is plaintext)."] },
+    { id: "google", label: "Google Password Manager", fileName: "samsung-pass-google.csv", hint: "Chrome \u2192 Password Manager \u2192 Settings \u2192 Import. One-time codes go in the note.", importSteps: ["Open Chrome \u2192 Google Password Manager \u2192 Settings.", "Tap Import passwords and choose the saved CSV.", "Logins without a website show as \u201Cno url\u201D \u2014 edit them later.", "Delete the CSV when the import finishes (it is plaintext)."] },
+    { id: "apple", label: "Apple Passwords", fileName: "samsung-pass-apple.csv", hint: "Settings \u2192 Apps \u2192 Passwords \u2192 Import passwords. One-time codes go in OTPAuth.", importSteps: ["On your iPhone or Mac open Settings \u2192 Apps \u2192 Passwords.", "Choose Import passwords and pick the saved CSV.", "One-time codes import through the OTPAuth column.", "Delete the CSV when the import finishes (it is plaintext)."] },
+    { id: "bitwarden", label: "Bitwarden", fileName: "samsung-pass-bitwarden.csv", hint: "Import as Bitwarden (csv). Logins and notes are in this file. Cards are separate.", importSteps: ["Open the Bitwarden web vault \u2192 Tools \u2192 Import data.", "Choose file format \u201CBitwarden (csv)\u201D and upload the saved CSV.", "Logins and secure notes come in together; cards are separate.", "Delete the CSV when the import finishes (it is plaintext)."] }
   ];
   var DEFAULT_FORMAT = "1password";
   function isFormatId(value) {
@@ -900,7 +900,8 @@ ${line}` : line;
       const ok = await platform.save(fileName, csv);
       state.externalPending = false;
       state.saved = state.saved || ok;
-      state.snackbar = ok ? `Saved ${fileName}. Delete it after you import.` : "Couldn't save the file. Nothing was written.";
+      if (ok) state.sheet = { kind: "import-guide" };
+      else state.snackbar = "Couldn't save the file. Nothing was written.";
       render();
     }
     function topBar() {
@@ -1002,26 +1003,30 @@ ${line}` : line;
         fieldError("password")
       ]);
     }
+    function destinationPicker(onPick) {
+      return el(
+        "div",
+        { class: "dests", role: "radiogroup", "aria-label": "Where are you importing?" },
+        FORMATS.map((f) => el("button", {
+          type: "button",
+          role: "radio",
+          class: f.id === state.format ? "dest selected" : "dest",
+          "aria-checked": f.id === state.format ? "true" : "false",
+          "data-format": f.id,
+          onclick: () => {
+            state.format = f.id;
+            storeFormat(f.id);
+            onPick?.();
+            render();
+          }
+        }, [el("span", { class: "dest-label" }, [f.label]), f.id === state.format ? icon("check_circle") : el("span")]))
+      );
+    }
     function formatCard() {
       const hint = FORMATS.find((f) => f.id === state.format).hint;
       return el("section", { class: "card" }, [
-        el("h2", { class: "label-large" }, ["Save as"]),
-        el(
-          "div",
-          { class: "chips", role: "radiogroup", "aria-label": "Password manager" },
-          FORMATS.map((f) => el("button", {
-            type: "button",
-            role: "radio",
-            class: f.id === state.format ? "chip selected" : "chip",
-            "aria-checked": f.id === state.format ? "true" : "false",
-            "data-format": f.id,
-            onclick: () => {
-              state.format = f.id;
-              storeFormat(f.id);
-              render();
-            }
-          }, [f.label]))
-        ),
+        el("h2", { class: "label-large" }, ["Where are you importing?"]),
+        destinationPicker(),
         el("p", { class: "helper" }, [hint])
       ]);
     }
@@ -1031,23 +1036,13 @@ ${line}` : line;
       return el("section", { class: "summary", "data-testid": "unlocked-summary" }, [
         el("div", { class: "summary-main" }, [
           el("p", { class: "summary-file", "data-testid": "filename" }, [name]),
-          el(
-            "div",
-            { class: "chips compact", role: "radiogroup", "aria-label": "Password manager" },
-            FORMATS.map((f) => el("button", {
-              type: "button",
-              role: "radio",
-              class: f.id === state.format ? "chip selected" : "chip",
-              "aria-checked": f.id === state.format ? "true" : "false",
-              "data-format": f.id,
-              onclick: () => {
-                state.format = f.id;
-                storeFormat(f.id);
-                render();
-              }
-            }, [f.label]))
-          ),
-          el("p", { class: "helper" }, [`Saving as ${formatLabel}`])
+          el("div", { class: "dest-summary" }, [
+            el("p", { class: "helper" }, [`Importing into ${formatLabel}`]),
+            el("button", { type: "button", class: "btn outline", "data-testid": "change-destination", onclick: () => {
+              state.sheet = { kind: "destination" };
+              render();
+            } }, ["Change"])
+          ])
         ]),
         el("button", {
           type: "button",
@@ -1184,6 +1179,22 @@ ${line}` : line;
             el("button", { type: "button", class: "btn outline", onclick: close }, ["Cancel"]),
             el("button", { type: "button", class: "btn filled", "data-testid": "confirm-save", onclick: () => void confirmSave(s.fileName, s.csv) }, ["Save"])
           ])
+        ];
+      } else if (s.kind === "destination") {
+        body = [
+          el("h2", { class: "title-large" }, ["Where are you importing?"]),
+          destinationPicker(() => {
+            state.sheet = null;
+          }),
+          el("div", { class: "sheet-actions" }, [el("button", { type: "button", class: "btn outline", onclick: close }, ["Cancel"])])
+        ];
+      } else if (s.kind === "import-guide") {
+        const f = FORMATS.find((x) => x.id === state.format);
+        body = [
+          el("h2", { class: "title-large" }, [`Import into ${f.label}`]),
+          el("p", { class: "muted" }, [`Saved ${f.fileName}.`]),
+          el("ol", { class: "guide-steps" }, f.importSteps.map((t) => el("li", {}, [t]))),
+          el("div", { class: "sheet-actions" }, [el("button", { type: "button", class: "btn filled", "data-testid": "guide-done", onclick: close }, ["Done"])])
         ];
       } else if (s.kind === "clear") {
         body = [
