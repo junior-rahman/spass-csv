@@ -1,21 +1,44 @@
-# Samsung Pass to CSV
+# Spcc
 
-One file you open in Chrome on your phone. The `.spass` export stays on the phone. Nothing is uploaded.
-
-## On your phone
-
-1. Download [samsung-pass-to-csv.html](samsung-pass-to-csv.html) from this repo.
-2. Open that file in Chrome.
-3. In Samsung Pass, go to Settings, then Export data. Set an export password and save the `.spass` file. Check Downloads if you do not see it.
-4. Choose that file here and type the same export password. That is not your Samsung account password.
-5. Save a CSV for Google, Apple, or Bitwarden. Share works if you want to send the file to Drive or Files.
-
-`index.html` and `app.js` are the same app. Keep both files in the same folder.
-
-Once the page is open, converting does not use the internet. Delete the CSV after you import it.
+**Spass to CSV Converter.** Convert a Samsung Pass `.spass` export into a CSV for 1Password, Google Password Manager, Apple Passwords, or Bitwarden. Everything happens on your phone. Nothing is uploaded. No accounts, analytics, or telemetry.
 
 Not affiliated with Samsung.
 
-## Install the app
+## Get it
 
-Download [Pass-to-CSV.apk](Pass-to-CSV.apk), open it, and allow install. Android 10 or newer. The page runs on the phone. The CSV is saved in Downloads.
+- **Android app:** Google Play, or the signed APK on [GitHub Releases](https://github.com/junior-rahman/spass-csv/releases). The app never updates itself.
+- **Web page:** download `samsung-pass-to-csv.html` from a release and open it in Chrome. It works offline and its Content-Security-Policy blocks all network requests (`connect-src 'none'`).
+
+### Verify a downloaded APK
+
+Each release lists the APK's SHA-256 and the signing certificate fingerprint.
+
+```bash
+sha256sum Pass-to-CSV-2.0.apk
+apksigner verify --print-certs Pass-to-CSV-2.0.apk
+```
+
+Both must match the release notes. Do not install an APK that does not match.
+
+## Use it
+
+1. In Samsung Pass: Settings → Export data. Set an export password and save the `.spass` file.
+2. Open Spcc, choose the file, type the **export** password (not your Samsung account password).
+3. Pick 1Password, Google, Apple, or Bitwarden and tap **Convert**.
+4. Check the list. Logins with no website stay blank — type one if you want. The app never guesses websites.
+5. Tap **Save CSV**, confirm, and import the file into your password manager.
+6. **Delete the CSV** and the `.spass` file after importing. The CSV holds your passwords in plain text.
+
+The app follows your phone's light or dark setting.
+
+## Develop
+
+```bash
+npm ci
+npm test          # vitest: crypto round-trip, parser, golden CSVs, UI
+npm run build     # writes index.html, app.js, samsung-pass-to-csv.html, android/app/src/main/assets/
+npm run check     # fails if generated files drift or Android policy is violated
+gradle -p android assembleRelease   # needs JDK 17 + Android SDK 34 and android/keystore.properties
+```
+
+Sources live in `web/src` (TypeScript) and `android/` (Kotlin). Never edit the generated root files by hand.
