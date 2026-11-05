@@ -4,3 +4,4 @@ export * from "./header";
 export * from "./sample";
 export * from "./bytes";
 export * from "./crypto";
+export * from "./parse";
