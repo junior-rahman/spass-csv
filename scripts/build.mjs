@@ -1,5 +1,5 @@
 // One source → all artifacts. `node scripts/build.mjs` writes; `--check` fails on drift.
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
@@ -12,12 +12,12 @@ const bundle = await build({
   bundle: true,
   format: "iife",
   target: "es2020",
-  minify: false,
+  minify: true,
   legalComments: "none",
   write: false
 });
 const js = `"use strict";\n${bundle.outputFiles[0].text}`;
-const styles = readFileSync("web/src/ui/styles.css", "utf8");
+const styles = (await transform(readFileSync("web/src/ui/styles.css", "utf8"), { loader: "css", minify: true })).code;
 const template = readFileSync("web/index.template.html", "utf8");
 
 const page = (csp, script) =>

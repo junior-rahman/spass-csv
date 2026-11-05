@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 
 describe("public copy", () => {
   const readme = readFileSync("README.md", "utf8");
-  it("README points to Releases, verification and CSV deletion", () => {
-    expect(readme).toMatch(/GitHub Releases/);
-    expect(readme).toMatch(/apksigner verify/);
+  it("README: Play $2.99, MIT source-only, CSV deletion", () => {
+    expect(readme).toMatch(/\$2\.99 one-time/);
+    expect(readme).toMatch(/MIT/);
+    expect(readme).toMatch(/No prebuilt APK\/AAB/);
+    expect(readme).not.toMatch(/GitHub Releases/);
     expect(readme).toMatch(/Delete the CSV/);
     expect(readme).not.toMatch(/version\.json|allow install/i);
   });
