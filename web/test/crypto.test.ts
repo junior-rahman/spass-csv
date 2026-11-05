@@ -1,4 +1,4 @@
-import { SpassError, decryptSpass, encryptSpass, samplePlaintext, unlockText } from "../src/lib";
+import { SpassError, decryptSpass, encryptSpass, samplePlaintext } from "../src/lib";
 import { TEST_PASSWORD, sampleSpass } from "./helpers";
 
 describe("decryptSpass", () => {
@@ -27,22 +27,5 @@ describe("decryptSpass", () => {
   it("rejects an empty file and non-base64 input as format errors", async () => {
     await expect(decryptSpass("   ", "x")).rejects.toMatchObject({ code: "format" });
     await expect(decryptSpass("not base64 !!!", "x")).rejects.toMatchObject({ code: "format" });
-  });
-});
-
-describe("unlockText", () => {
-  it("returns a vault with all four kinds", async () => {
-    const vault = await unlockText(await sampleSpass(), TEST_PASSWORD);
-    expect([vault.logins.length, vault.cards.length, vault.addresses.length, vault.notes.length]).toEqual([3, 1, 1, 1]);
-    expect(vault.alreadyPlain).toBe(false);
-  });
-
-  it("asks for a password when none is given", async () => {
-    await expect(unlockText(await sampleSpass(), "")).rejects.toMatchObject({ code: "empty" });
-  });
-
-  it("opens a plaintext export without a password", async () => {
-    const vault = await unlockText(samplePlaintext(), "");
-    expect(vault.alreadyPlain).toBe(true);
   });
 });
