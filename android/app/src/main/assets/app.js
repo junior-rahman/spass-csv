@@ -653,6 +653,33 @@ ${line}` : line;
     }
     return span;
   }
+  var P_RING = {
+    field: "#3F4F3A",
+    ink: "#F7F4EF",
+    ring: "M196 196 A92 92 0 1 1 268 300 H244",
+    stem: "M244 300 V400",
+    bars: [176, 216, 256]
+  };
+  function pRingMark(size = 56) {
+    const span = el("span", { class: "mark", "data-mark": "p-ring", role: "img", "aria-label": "Spcc logo" }, []);
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 512 512");
+    svg.setAttribute("width", String(size));
+    svg.setAttribute("height", String(size));
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("aria-hidden", "true");
+    const mk = (tag, attrs) => {
+      const n = document.createElementNS(SVG_NS, tag);
+      for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+      svg.append(n);
+    };
+    mk("rect", { width: "512", height: "512", rx: "128", fill: P_RING.field });
+    mk("path", { d: P_RING.ring, fill: "none", stroke: P_RING.ink, "stroke-width": "40", "stroke-linecap": "butt" });
+    mk("path", { d: P_RING.stem, fill: "none", stroke: P_RING.ink, "stroke-width": "40" });
+    for (const y of P_RING.bars) mk("rect", { x: "136", y: String(y), width: "88", height: "22", fill: P_RING.ink });
+    span.append(svg);
+    return span;
+  }
 
   // web/src/ui/platform.ts
   function bridge() {
@@ -795,8 +822,13 @@ ${line}` : line;
     }
     function topBar() {
       return el("header", { class: "appbar" }, [
-        icon("lock"),
-        el("h1", { class: "title-large" }, ["Spcc"]),
+        el("div", { class: "lockup", "data-testid": "lockup" }, [
+          pRingMark(48),
+          el("div", { class: "lockup-panel" }, [
+            el("h1", { class: "lockup-title" }, ["Spcc"]),
+            el("p", { class: "lockup-sub" }, ["Spass to CSV Converter"])
+          ])
+        ]),
         el("button", { class: "icon-btn", type: "button", "aria-label": "About and privacy", onclick: () => {
           state.sheet = { kind: "about" };
           render();
@@ -823,7 +855,7 @@ ${line}` : line;
       );
     }
     function trustStrip() {
-      return el("p", { class: "trust" }, [icon("lock"), "Stays on this phone \xB7 nothing uploaded"]);
+      return el("p", { class: "trust", role: "note", "data-testid": "trust" }, [icon("lock"), "Stays on this phone \xB7 nothing uploaded"]);
     }
     function fieldError(field) {
       return state.error?.field === field ? el("p", { class: "error", role: "alert" }, [state.error.message]) : null;
@@ -1009,7 +1041,7 @@ ${line}` : line;
       return el("div", { class: "scrim", onclick: (e) => {
         if (e.target === e.currentTarget) close();
       } }, [
-        el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "data-testid": `sheet-${s.kind}` }, body)
+        el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "data-testid": `sheet-${s.kind}` }, [el("div", { class: "handle", "aria-hidden": "true" }), ...body])
       ]);
     }
     function render() {
