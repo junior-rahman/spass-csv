@@ -483,6 +483,7 @@
   function setManualSite(login, input) {
     login.url = normalizeUserUrl(input);
     login.needsSite = login.url === "";
+    login.siteKeptBlank = false;
   }
   function vaultCount(vault) {
     return vault.logins.length + vault.cards.length + vault.addresses.length + vault.notes.length;
@@ -490,8 +491,11 @@
   var PLACEHOLDER_TITLE = "no title";
   var PLACEHOLDER_USERNAME = "no username";
   var PLACEHOLDER_URL = "no url";
-  function formatRequiresUrl(_format) {
+  function formatFlagsMissingUrl(_format) {
     return true;
+  }
+  function formatRequiresUrl(format) {
+    return format === "google";
   }
   function resolvedTitle(login) {
     const name = login.name.trim() || (login.appLabel ?? "").trim();
@@ -510,7 +514,7 @@
     const gaps = [];
     if (!resolvedTitle(login)) gaps.push("title");
     if (!login.username.trim()) gaps.push("username");
-    if (formatRequiresUrl(format) && !login.url.trim()) gaps.push("url");
+    if (formatFlagsMissingUrl(format) && !login.url.trim() && !(login.siteKeptBlank && !formatRequiresUrl(format))) gaps.push("url");
     return gaps;
   }
   var GAP_LABEL = { title: "title", username: "username", url: "website" };
@@ -520,8 +524,9 @@
   function applyPlaceholders(login, format) {
     if (!resolvedTitle(login)) login.name = PLACEHOLDER_TITLE;
     if (!login.username.trim()) login.username = PLACEHOLDER_USERNAME;
-    if (formatRequiresUrl(format) && !login.url.trim()) {
-      login.url = PLACEHOLDER_URL;
+    if (!login.url.trim()) {
+      if (formatRequiresUrl(format)) login.url = PLACEHOLDER_URL;
+      else login.siteKeptBlank = true;
       login.needsSite = false;
     }
   }
@@ -1163,7 +1168,7 @@ ${line}` : line;
           ]),
           list,
           more,
-          el("p", {}, ["Delete them, or keep them with clear placeholders (no title / no username / no url). Passwords stay empty when missing."]),
+          el("p", {}, [state.format === "google" ? "Delete them, or keep them with clear placeholders (no title / no username / no url). Passwords stay empty when missing." : "Delete them, or keep them with clear placeholders (no title / no username). Missing websites export blank \u2014 still label that column Website in the importer, then add real URLs later. Passwords stay empty when missing."]),
           el("div", { class: "sheet-actions stack" }, [
             el("button", { type: "button", class: "btn danger", "data-testid": "incomplete-delete", onclick: deleteIncomplete }, [`Delete ${n} ${noun}`]),
             el("button", { type: "button", class: "btn filled", "data-testid": "incomplete-keep", onclick: keepIncomplete }, ["Keep with placeholders"]),

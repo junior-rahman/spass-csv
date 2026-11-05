@@ -411,7 +411,9 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         ]),
         list,
         more,
-        el("p", {}, ["Delete them, or keep them with clear placeholders (no title / no username / no url). Passwords stay empty when missing."]),
+        el("p", {}, [state.format === "google"
+          ? "Delete them, or keep them with clear placeholders (no title / no username / no url). Passwords stay empty when missing."
+          : "Delete them, or keep them with clear placeholders (no title / no username). Missing websites export blank — still label that column Website in the importer, then add real URLs later. Passwords stay empty when missing."]),
         el("div", { class: "sheet-actions stack" }, [
           el("button", { type: "button", class: "btn danger", "data-testid": "incomplete-delete", onclick: deleteIncomplete }, [`Delete ${n} ${noun}`]),
           el("button", { type: "button", class: "btn filled", "data-testid": "incomplete-keep", onclick: keepIncomplete }, ["Keep with placeholders"]),

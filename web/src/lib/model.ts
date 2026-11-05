@@ -128,6 +128,7 @@ export function toVault(parsed: ParsedSpass, alreadyPlain = false): Vault {
 export function setManualSite(login: Login, input: string): void {
   login.url = normalizeUserUrl(input);
   login.needsSite = login.url === "";
+  login.siteKeptBlank = false;
 }
 
 export function vaultCount(vault: Vault): number {
@@ -138,9 +139,17 @@ export const PLACEHOLDER_TITLE = "no title";
 export const PLACEHOLDER_USERNAME = "no username";
 export const PLACEHOLDER_URL = "no url";
 
-/** Every supported format needs a website; a blank one is a gap (flagged as "add website" in the list). */
-export function formatRequiresUrl(_format: FormatId): boolean {
+/** Every format flags a blank website as a gap (warned on Save). */
+export function formatFlagsMissingUrl(_format: FormatId): boolean {
   return true;
+}
+
+/**
+ * Only Google needs a non-empty URL string, so only Google gets the "no url" placeholder.
+ * 1Password / Apple / Bitwarden accept an empty website cell; a non-URL string like "no url" blocks 1Password import.
+ */
+export function formatRequiresUrl(format: FormatId): boolean {
+  return format === "google";
 }
 
 /** Name → app label → URL host → username. Empty string when none of those exist. Never invents a URL. */
@@ -166,7 +175,7 @@ export function loginGaps(login: Login, format: FormatId): LoginGap[] {
   const gaps: LoginGap[] = [];
   if (!resolvedTitle(login)) gaps.push("title");
   if (!login.username.trim()) gaps.push("username");
-  if (formatRequiresUrl(format) && !login.url.trim()) gaps.push("url");
+  if (formatFlagsMissingUrl(format) && !login.url.trim() && !(login.siteKeptBlank && !formatRequiresUrl(format))) gaps.push("url");
   return gaps;
 }
 
@@ -180,8 +189,9 @@ export function incompleteLogins(logins: Login[], format: FormatId): Login[] {
 export function applyPlaceholders(login: Login, format: FormatId): void {
   if (!resolvedTitle(login)) login.name = PLACEHOLDER_TITLE;
   if (!login.username.trim()) login.username = PLACEHOLDER_USERNAME;
-  if (formatRequiresUrl(format) && !login.url.trim()) {
-    login.url = PLACEHOLDER_URL;
+  if (!login.url.trim()) {
+    if (formatRequiresUrl(format)) login.url = PLACEHOLDER_URL;
+    else login.siteKeptBlank = true;
     login.needsSite = false;
   }
 }

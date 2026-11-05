@@ -20,6 +20,8 @@ export interface Login {
   otpUri: string;
   needsSite: boolean;
   appLabel: string;
+  /** User chose "Keep" for a login with no website; exported blank (or "no url" for Google). */
+  siteKeptBlank?: boolean;
 }
 
 export interface Card {
