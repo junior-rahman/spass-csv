@@ -131,7 +131,9 @@ describe("brand lockup", () => {
     const lockup = q(root, ".appbar [data-testid=lockup]");
     const mark = q(lockup, "[data-mark=p-ring]");
     expect(mark.getAttribute("aria-label")).toBe("Spcc logo");
-    expect(mark.querySelector("svg rect")?.getAttribute("fill")).toBe("#3F4F3A");
+    const img = mark.querySelector("img");
+    expect(img?.getAttribute("src")).toMatch(/^data:image\/png;base64,/);
+    expect(mark.querySelector("svg")).toBeNull();
     expect(q(lockup, ".lockup-title").textContent).toBe("Spcc");
     expect(q(lockup, ".lockup-sub").textContent).toBe("Spass to CSV Converter");
     expect(root.querySelector('.appbar [data-icon="lock"]')).toBeNull();

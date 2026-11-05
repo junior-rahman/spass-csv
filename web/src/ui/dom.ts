@@ -1,3 +1,4 @@
+import { SPCC_MARK_PNG } from "./assets/spcc-mark";
 type Attrs = Record<string, string | boolean | ((event: Event) => void)>;
 
 /** Builds DOM with textContent only. Never use innerHTML with export data. */
@@ -47,33 +48,16 @@ export function icon(name: string): HTMLElement {
   return span;
 }
 
-/** Spcc P-ring mark geometry (512x512). Shared by the app bar, favicon and launcher icons. */
-export const P_RING = {
-  field: "#3F4F3A",
-  ink: "#F7F4EF",
-  ring: "M196 196 A92 92 0 1 1 268 300 H244",
-  stem: "M244 300 V400",
-  bars: [176, 216, 256],
-};
-
-/** Inline P-ring squircle mark, built via createElementNS (CSP-safe, no innerHTML). */
+/** Locked Warm Grove P-ring mark (bitmap from mockups/brand/spcc-icon-warm-grove.jpg). */
 export function pRingMark(size = 56): HTMLElement {
   const span = el("span", { class: "mark", "data-mark": "p-ring", role: "img", "aria-label": "Spcc logo" }, []);
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("viewBox", "0 0 512 512");
-  svg.setAttribute("width", String(size));
-  svg.setAttribute("height", String(size));
-  svg.setAttribute("focusable", "false");
-  svg.setAttribute("aria-hidden", "true");
-  const mk = (tag: string, attrs: Record<string, string>) => {
-    const n = document.createElementNS(SVG_NS, tag);
-    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
-    svg.append(n);
-  };
-  mk("rect", { width: "512", height: "512", rx: "128", fill: P_RING.field });
-  mk("path", { d: P_RING.ring, fill: "none", stroke: P_RING.ink, "stroke-width": "40", "stroke-linecap": "butt" });
-  mk("path", { d: P_RING.stem, fill: "none", stroke: P_RING.ink, "stroke-width": "40" });
-  for (const y of P_RING.bars) mk("rect", { x: "136", y: String(y), width: "88", height: "22", fill: P_RING.ink });
-  span.append(svg);
+  const img = document.createElement("img");
+  img.src = SPCC_MARK_PNG;
+  img.alt = "";
+  img.width = size;
+  img.height = size;
+  img.setAttribute("aria-hidden", "true");
+  img.setAttribute("draggable", "false");
+  span.append(img);
   return span;
 }
