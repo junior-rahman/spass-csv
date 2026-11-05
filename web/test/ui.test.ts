@@ -37,17 +37,21 @@ async function unlock(root: HTMLElement) {
 beforeEach(() => localStorage.clear());
 
 describe("console UI", () => {
-  it("defaults to 1Password with four equal chips", () => {
+  it("defaults to 1Password in the Where are you importing? picker", () => {
     const { root } = setup();
-    const chips = [...root.querySelectorAll("[data-format]")];
-    expect(chips.map((c) => c.getAttribute("data-format"))).toEqual(["1password", "google", "apple", "bitwarden"]);
-    expect(q(root, ".chip.selected").getAttribute("data-format")).toBe("1password");
+    const group = q(root, "[role=radiogroup]");
+    expect(group.getAttribute("aria-label")).toBe("Where are you importing?");
+    expect(root.textContent).toContain("Where are you importing?");
+    expect(root.querySelector(".chip")).toBeNull();
+    const opts = [...root.querySelectorAll("[data-format]")];
+    expect(opts.map((c) => c.getAttribute("data-format"))).toEqual(["1password", "google", "apple", "bitwarden"]);
+    expect(q(root, ".dest.selected").getAttribute("data-format")).toBe("1password");
   });
 
   it("restores the last-used format", () => {
     localStorage.setItem(FORMAT_KEY, "apple");
     const { root } = setup();
-    expect(q(root, ".chip.selected").getAttribute("data-format")).toBe("apple");
+    expect(q(root, ".dest.selected").getAttribute("data-format")).toBe("apple");
   });
 
   it("keeps Convert disabled until file and password exist", async () => {
@@ -113,11 +117,19 @@ describe("console UI", () => {
     expect(saves[0].fileName).toBe("samsung-pass-1password.csv");
     expect(saves[0].csv.startsWith("Title,")).toBe(false);
     expect(root.querySelector(".reminder")).not.toBeNull();
+    await vi.waitFor(() => expect(root.querySelector("[data-testid=sheet-import-guide]")).not.toBeNull());
+    const guide = q(root, "[data-testid=sheet-import-guide]");
+    expect(guide.textContent).toContain("Import into 1Password");
+    expect(guide.querySelectorAll("ol li").length).toBeGreaterThanOrEqual(3);
+    expect(guide.textContent).toContain("Title, Website, Username, Password, Notes");
+    q<HTMLButtonElement>(root, "[data-testid=guide-done]").click();
+    expect(root.querySelector("[data-testid=sheet-import-guide]")).toBeNull();
   });
 
   it("Google save warns about incomplete rows before placeholders", async () => {
     const { root, saves } = setup();
     await unlock(root);
+    q<HTMLButtonElement>(root, "[data-testid=change-destination]").click();
     q<HTMLButtonElement>(root, "[data-format=google]").click();
     q<HTMLButtonElement>(root, "[data-testid=save]").click();
     expect(root.querySelector("[data-testid=sheet-incomplete]")).not.toBeNull();
@@ -134,6 +146,7 @@ describe("console UI", () => {
     const { root, saves } = setup();
     await unlock(root);
     const before = root.querySelectorAll("[data-testid=login]").length;
+    q<HTMLButtonElement>(root, "[data-testid=change-destination]").click();
     q<HTMLButtonElement>(root, "[data-format=google]").click();
     q<HTMLButtonElement>(root, "[data-testid=save]").click();
     q<HTMLButtonElement>(root, "[data-testid=incomplete-delete]").click();

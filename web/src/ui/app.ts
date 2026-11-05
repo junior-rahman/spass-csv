@@ -28,7 +28,9 @@ type Sheet =
   | { kind: "save"; fileName: string; csv: string }
   | { kind: "incomplete"; items: { title: string; gaps: string[] }[] }
   | { kind: "clear" }
-  | { kind: "about" };
+  | { kind: "about" }
+  | { kind: "destination" }
+  | { kind: "import-guide" };
 
 interface State {
   file: File | null;
@@ -169,7 +171,8 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const ok = await platform.save(fileName, csv);
     state.externalPending = false;
     state.saved = state.saved || ok;
-    state.snackbar = ok ? `Saved ${fileName}. Delete it after you import.` : "Couldn't save the file. Nothing was written.";
+    if (ok) state.sheet = { kind: "import-guide" };
+    else state.snackbar = "Couldn't save the file. Nothing was written.";
     render();
   }
 
@@ -267,20 +270,24 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     ]);
   }
 
+  function destinationPicker(onPick?: () => void): HTMLElement {
+    return el("div", { class: "dests", role: "radiogroup", "aria-label": "Where are you importing?" },
+      FORMATS.map((f) => el("button", {
+        type: "button",
+        role: "radio",
+        class: f.id === state.format ? "dest selected" : "dest",
+        "aria-checked": f.id === state.format ? "true" : "false",
+        "data-format": f.id,
+        onclick: () => { state.format = f.id; storeFormat(f.id); onPick?.(); render(); }
+      }, [el("span", { class: "dest-label" }, [f.label]), f.id === state.format ? icon("check_circle") : el("span")]))
+    );
+  }
+
   function formatCard(): HTMLElement {
     const hint = FORMATS.find((f) => f.id === state.format)!.hint;
     return el("section", { class: "card" }, [
-      el("h2", { class: "label-large" }, ["Save as"]),
-      el("div", { class: "chips", role: "radiogroup", "aria-label": "Password manager" },
-        FORMATS.map((f) => el("button", {
-          type: "button",
-          role: "radio",
-          class: f.id === state.format ? "chip selected" : "chip",
-          "aria-checked": f.id === state.format ? "true" : "false",
-          "data-format": f.id,
-          onclick: () => { state.format = f.id; storeFormat(f.id); render(); }
-        }, [f.label]))
-      ),
+      el("h2", { class: "label-large" }, ["Where are you importing?"]),
+      destinationPicker(),
       el("p", { class: "helper" }, [hint])
     ]);
   }
@@ -292,17 +299,10 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     return el("section", { class: "summary", "data-testid": "unlocked-summary" }, [
       el("div", { class: "summary-main" }, [
         el("p", { class: "summary-file", "data-testid": "filename" }, [name]),
-        el("div", { class: "chips compact", role: "radiogroup", "aria-label": "Password manager" },
-          FORMATS.map((f) => el("button", {
-            type: "button",
-            role: "radio",
-            class: f.id === state.format ? "chip selected" : "chip",
-            "aria-checked": f.id === state.format ? "true" : "false",
-            "data-format": f.id,
-            onclick: () => { state.format = f.id; storeFormat(f.id); render(); }
-          }, [f.label]))
-        ),
-        el("p", { class: "helper" }, [`Saving as ${formatLabel}`])
+        el("div", { class: "dest-summary" }, [
+          el("p", { class: "helper" }, [`Importing into ${formatLabel}`]),
+          el("button", { type: "button", class: "btn outline", "data-testid": "change-destination", onclick: () => { state.sheet = { kind: "destination" }; render(); } }, ["Change"])
+        ])
       ]),
       el("button", {
         type: "button",
@@ -429,6 +429,20 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
           el("button", { type: "button", class: "btn outline", onclick: close }, ["Cancel"]),
           el("button", { type: "button", class: "btn filled", "data-testid": "confirm-save", onclick: () => void confirmSave(s.fileName, s.csv) }, ["Save"])
         ])
+      ];
+    } else if (s.kind === "destination") {
+      body = [
+        el("h2", { class: "title-large" }, ["Where are you importing?"]),
+        destinationPicker(() => { state.sheet = null; }),
+        el("div", { class: "sheet-actions" }, [el("button", { type: "button", class: "btn outline", onclick: close }, ["Cancel"])])
+      ];
+    } else if (s.kind === "import-guide") {
+      const f = FORMATS.find((x) => x.id === state.format)!;
+      body = [
+        el("h2", { class: "title-large" }, [`Import into ${f.label}`]),
+        el("p", { class: "muted" }, [`Saved ${f.fileName}.`]),
+        el("ol", { class: "guide-steps" }, f.importSteps.map((t) => el("li", {}, [t]))),
+        el("div", { class: "sheet-actions" }, [el("button", { type: "button", class: "btn filled", "data-testid": "guide-done", onclick: close }, ["Done"])])
       ];
     } else if (s.kind === "clear") {
       body = [
