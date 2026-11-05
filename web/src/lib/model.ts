@@ -133,3 +133,14 @@ export function setManualSite(login: Login, input: string): void {
 export function vaultCount(vault: Vault): number {
   return vault.logins.length + vault.cards.length + vault.addresses.length + vault.notes.length;
 }
+
+/** Import-safe label: name → app label → URL host → username → "Untitled login". Never empty; never invents a URL. */
+export function displayTitle(login: Pick<Login, "name" | "url" | "username"> & { appLabel?: string }): string {
+  const name = login.name.trim() || (login.appLabel ?? "").trim();
+  if (name) return name;
+  try {
+    const host = new URL(login.url).hostname.replace(/^www\./, "");
+    if (host) return host;
+  } catch { /* no usable URL */ }
+  return login.username.trim() || "Untitled login";
+}

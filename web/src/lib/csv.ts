@@ -1,3 +1,4 @@
+import { displayTitle } from "./model";
 import type { Address, Card, FormatId, Login, Note, SpassTable } from "./types";
 
 const FORMULA_LEAD = /^[=+\-@\t\r]/;
@@ -29,14 +30,14 @@ export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): s
   if (format === "1password") {
     return toCsv(
       ["Title", "Website", "Username", "Password", "Notes"],
-      logins.map((l) => [l.name || "Login", l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
+      logins.map((l) => [displayTitle(l), l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
       ["Password"]
     );
   }
   if (format === "apple") {
     return toCsv(
       ["Title", "URL", "Username", "Password", "Notes", "OTPAuth"],
-      logins.map((l) => [l.name, l.url, l.username, l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
+      logins.map((l) => [displayTitle(l), l.url, l.username, l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
       ["Password", "OTPAuth"]
     );
   }
@@ -46,14 +47,14 @@ export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): s
       "login_uri", "login_username", "login_password", "login_totp"
     ];
     const loginRows = logins.map((l) => [
-      "", "0", "login", l.name, l.note, "", "0", l.url, l.username, l.password, l.otpUri || l.otp
+      "", "0", "login", displayTitle(l), l.note, "", "0", l.url, l.username, l.password, l.otpUri || l.otp
     ]);
-    const noteRows = notes.map((n) => ["", "0", "note", n.title, n.body, "", "0", "", "", "", ""]);
+    const noteRows = notes.map((n) => ["", "0", "note", n.title.trim() || "Note", n.body, "", "0", "", "", "", ""]);
     return toCsv(headers, [...loginRows, ...noteRows], ["login_password", "login_totp"]);
   }
   return toCsv(
     ["name", "url", "username", "password", "note"],
-    logins.map((l) => [l.name, l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
+    logins.map((l) => [displayTitle(l), l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
     ["password"]
   );
 }
