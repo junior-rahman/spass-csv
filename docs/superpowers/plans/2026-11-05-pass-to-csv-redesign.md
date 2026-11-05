@@ -10,11 +10,11 @@
 
 ## Global Constraints
 
-- Product name **Pass to CSV**; package / applicationId `com.jrrahman.passtocsv` (unless Play forces a rename later).
+- Product name **Spcc** (subtitle **Spass to CSV Converter**); package / applicationId `com.jrrahman.passtocsv` (unless Play forces a rename later). Copyright line: © 2026 Juel Hossain. All rights reserved. Mark: P-ring icon; marketing label: P2 Soft overlap.
 - Hybrid A+B+C on one screen: phase rail `1 · File` → `2 · Unlock` → `3 · Save` updates in place (no wizard pages).
 - Theme follows the system: `prefers-color-scheme` on web, Android day/night (`Theme.AppCompat.DayNight`, `values-night/`) in the APK. **No in-app theme toggle. Dark theme is required.**
-- Light: Material 3 surfaces, white elevated cards, primary `#1e3a34`, neutral ink.
-- Dark: deep forest shell `#0c1210`–`#121a18`, translucent glass cards (backdrop blur), glow on the lock mark only, gradient primary CTA `#3d8f76` → `#1e3a34`.
+- Light (Warm Grove): Material 3 surfaces, cream `#F7F4EF` / white elevated cards, primary Grove `#3F4F3A`, Olive `#6B8F71`, Fern `#A3C9A8`, Soil ink `#1C1917`.
+- Dark: Soil/ink shell `#1C1917`–`#0F1410`, translucent glass cards (backdrop blur), glow on the P-ring mark only, gradient primary CTA Olive `#6B8F71` → Grove `#3F4F3A`.
 - Corner radii 16–28dp (cards 24, buttons 20, sheet 28); 8dp grid; page padding 16dp; phase pills fully rounded; respect safe-area insets.
 - Client-only; CSP `connect-src 'none'` in every HTML; nothing uploaded; no analytics/telemetry.
 - No in-app APK updater; delete `version.json`; updates via Play / GitHub Releases only. No `INTERNET`, no `REQUEST_INSTALL_PACKAGES`.
