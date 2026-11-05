@@ -1,7 +1,7 @@
 # Pass to CSV — Full Redesign Spec
 
 **Date:** 2026-11-05  
-**Product:** Pass to CSV (Samsung Pass `.spass` → CSV)  
+**Product:** Spcc — Spass to CSV Converter (Samsung Pass `.spass` → CSV)  
 **Repo:** `junior-rahman/spass-csv`  
 **Status:** Design locked — Hybrid A+B+C with system light/dark  
 **Approach:** Hybrid — single-screen console + phase rail + glass/Material dual theme  
@@ -131,8 +131,8 @@ Extra exports (cards, addresses, notes, full table) remain secondary buttons whe
 
 ### Play Store listing / marketing
 
-- **Title:** Pass to CSV  
-- **Subtitle:** Samsung Pass export converter  
+- **Title:** Spcc  
+- **Subtitle:** Spass to CSV Converter  
 - Screenshots: idle console, unlocked with counts, save-confirm sheet.  
 - Short description leads with on-device conversion / nothing uploaded.  
 - Listing privacy text matches in-app Privacy.  
