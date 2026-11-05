@@ -2,8 +2,10 @@ import {
   FORMATS,
   SpassError,
   addressesToCsv,
+  applyPlaceholders,
   cardsToCsv,
   fileNameFor,
+  incompleteLogins,
   loginsToCsv,
   notesToCsv,
   setManualSite,
@@ -17,7 +19,12 @@ import { detectPlatform, type Platform } from "./platform";
 import { loadFormat, storeFormat } from "./prefs";
 
 type Status = "form" | "working" | "done";
-type Sheet = null | { kind: "save"; fileName: string; csv: string } | { kind: "clear" } | { kind: "about" };
+type Sheet =
+  | null
+  | { kind: "save"; fileName: string; csv: string }
+  | { kind: "incomplete"; count: number }
+  | { kind: "clear" }
+  | { kind: "about" };
 
 interface State {
   file: File | null;
@@ -72,6 +79,10 @@ function readFileText(file: File): Promise<string> {
   });
 }
 
+export function isSpassFileName(name: string): boolean {
+  return /\.spass$/i.test(name.trim());
+}
+
 export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHandle {
   const platform = options.platform ?? detectPlatform();
   let state = freshState(loadFormat());
@@ -109,6 +120,38 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     return { fileName: fileNameFor(state.format), csv: loginsToCsv(vault.logins, vault.notes, state.format) };
   }
 
+  function openSaveSheet() {
+    state.sheet = { kind: "save", ...primaryCsv() };
+    render();
+  }
+
+  function beginPrimarySave() {
+    const vault = state.vault;
+    if (!vault) return;
+    const incomplete = incompleteLogins(vault.logins, state.format);
+    if (incomplete.length) {
+      state.sheet = { kind: "incomplete", count: incomplete.length };
+      render();
+      return;
+    }
+    openSaveSheet();
+  }
+
+  function keepIncomplete() {
+    const vault = state.vault;
+    if (!vault) return;
+    for (const login of incompleteLogins(vault.logins, state.format)) applyPlaceholders(login, state.format);
+    openSaveSheet();
+  }
+
+  function deleteIncomplete() {
+    const vault = state.vault;
+    if (!vault) return;
+    const drop = new Set(incompleteLogins(vault.logins, state.format).map((l) => l.id));
+    vault.logins = vault.logins.filter((l) => !drop.has(l.id));
+    openSaveSheet();
+  }
+
   async function confirmSave(fileName: string, csv: string) {
     state.sheet = null;
     state.externalPending = true;
@@ -134,7 +177,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   }
 
   function currentPhase(): "file" | "unlock" | "save" {
-    if (state.sheet?.kind === "save" || state.saved) return "save";
+    if (state.sheet?.kind === "save" || state.sheet?.kind === "incomplete" || state.saved) return "save";
     return state.vault ? "unlock" : "file";
   }
 
@@ -160,12 +203,19 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   }
 
   function fileCard(): HTMLElement {
-    const input = el("input", { type: "file", accept: ".spass,application/octet-stream,text/plain", id: "spass-file", class: "visually-hidden" }) as HTMLInputElement;
+    const input = el("input", { type: "file", accept: ".spass", id: "spass-file", class: "visually-hidden" }) as HTMLInputElement;
     input.addEventListener("click", () => { state.externalPending = true; });
     input.addEventListener("change", () => {
       state.externalPending = false;
-      state.file = input.files?.[0] ?? null;
-      state.error = null;
+      const picked = input.files?.[0] ?? null;
+      if (picked && !isSpassFileName(picked.name)) {
+        state.file = null;
+        state.error = { field: "file", message: "Choose a .spass export from Samsung Pass." };
+        input.value = "";
+      } else {
+        state.file = picked;
+        state.error = null;
+      }
       render();
     });
     return el("section", { class: "card" }, [
@@ -220,6 +270,42 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     ]);
   }
 
+  /** Compact strip after unlock: filename + format + change — not the full setup cards. */
+  function unlockedSummary(): HTMLElement {
+    const name = state.file?.name ?? "export.spass";
+    const formatLabel = FORMATS.find((f) => f.id === state.format)!.label;
+    return el("section", { class: "summary", "data-testid": "unlocked-summary" }, [
+      el("div", { class: "summary-main" }, [
+        el("p", { class: "summary-file", "data-testid": "filename" }, [name]),
+        el("div", { class: "chips compact", role: "radiogroup", "aria-label": "Password manager" },
+          FORMATS.map((f) => el("button", {
+            type: "button",
+            role: "radio",
+            class: f.id === state.format ? "chip selected" : "chip",
+            "aria-checked": f.id === state.format ? "true" : "false",
+            "data-format": f.id,
+            onclick: () => { state.format = f.id; storeFormat(f.id); render(); }
+          }, [f.label]))
+        ),
+        el("p", { class: "helper" }, [`Saving as ${formatLabel}`])
+      ]),
+      el("button", {
+        type: "button",
+        class: "btn outline summary-change",
+        "data-testid": "change-file",
+        onclick: () => {
+          state.vault = null;
+          state.status = "form";
+          state.saved = false;
+          state.revealed = new Set();
+          state.query = "";
+          state.error = null;
+          render();
+        }
+      }, ["Change"])
+    ]);
+  }
+
   function countsRow(vault: Vault): HTMLElement {
     const item = (n: number, label: string) => el("div", { class: "count" }, [el("strong", {}, [String(n)]), el("span", {}, [label])]);
     return el("section", { class: "counts", "data-testid": "counts" }, [
@@ -232,19 +318,20 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   function loginRow(login: Login): HTMLElement {
     const shown = state.revealed.has(login.id);
+    const title = login.name.trim() || login.appLabel.trim() || login.username.trim() || "no title";
     const site = login.needsSite
       ? (() => {
-          const input = el("input", { type: "url", class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${login.name}` }) as HTMLInputElement;
+          const input = el("input", { type: "url", class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${title}` }) as HTMLInputElement;
           input.addEventListener("change", () => { setManualSite(login, input.value); render(); });
           return el("div", {}, [input, el("p", { class: "helper" }, ["No website in the export. Left blank unless you type one."])]);
         })()
-      : el("p", { class: "site" }, [login.url]);
+      : login.url ? el("p", { class: "site" }, [login.url]) : null;
     return el("li", { class: "login", "data-testid": "login" }, [
       el("div", { class: "login-head" }, [
-        el("strong", {}, [login.name]),
+        el("strong", { class: "login-title" }, [title]),
         el("button", { type: "button", class: "icon-btn", "aria-label": shown ? "Hide password" : "Show password", onclick: () => { shown ? state.revealed.delete(login.id) : state.revealed.add(login.id); render(); } }, [icon(shown ? "visibility_off" : "visibility")])
       ]),
-      el("p", { class: "muted" }, [login.username]),
+      el("p", { class: "muted login-user" }, [login.username || "no username"]),
       el("p", { class: "mono" }, [shown ? login.password : "••••••••"]),
       site
     ]);
@@ -267,7 +354,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     if (vault.cards.length) extras.push(extra("Save cards", "samsung-pass-cards.csv", cardsToCsv(vault.cards)));
     if (vault.addresses.length) extras.push(extra("Save addresses", "samsung-pass-addresses.csv", addressesToCsv(vault.addresses)));
     if (vault.notes.length && state.format !== "bitwarden") extras.push(extra("Save notes", "samsung-pass-notes.csv", notesToCsv(vault.notes)));
-    return el("div", { class: "results" }, [
+    return el("section", { class: "card results", "data-testid": "results" }, [
       countsRow(vault),
       search,
       list,
@@ -279,7 +366,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   function stickyBar(): HTMLElement {
     return el("footer", { class: "sticky" }, [
       el("button", { type: "button", class: "btn outline", "data-testid": "clear", onclick: () => { state.sheet = { kind: "clear" }; render(); } }, [icon("delete"), "Clear"]),
-      el("button", { type: "button", class: "btn filled", "data-testid": "save", onclick: () => { state.sheet = { kind: "save", ...primaryCsv() }; render(); } }, [icon("download"), "Save CSV"])
+      el("button", { type: "button", class: "btn filled", "data-testid": "save", onclick: beginPrimarySave }, [icon("download"), "Save CSV"])
     ]);
   }
 
@@ -288,7 +375,22 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     if (!s) return null;
     const close = () => { state.sheet = null; render(); };
     let body: (HTMLElement | null)[];
-    if (s.kind === "save") {
+    if (s.kind === "incomplete") {
+      const n = s.count;
+      const noun = n === 1 ? "login" : "logins";
+      body = [
+        el("h2", { class: "title-large" }, ["Incomplete logins"]),
+        el("p", {}, [
+          `${n} ${noun} are missing a title, username, or website required for ${FORMATS.find((f) => f.id === state.format)!.label}.`
+        ]),
+        el("p", {}, ["Delete them, or keep them with clear placeholders (no title / no username / no url). Passwords stay empty when missing."]),
+        el("div", { class: "sheet-actions stack" }, [
+          el("button", { type: "button", class: "btn danger", "data-testid": "incomplete-delete", onclick: deleteIncomplete }, [`Delete ${n} ${noun}`]),
+          el("button", { type: "button", class: "btn filled", "data-testid": "incomplete-keep", onclick: keepIncomplete }, ["Keep with placeholders"]),
+          el("button", { type: "button", class: "btn outline", onclick: close }, ["Cancel"])
+        ])
+      ];
+    } else if (s.kind === "save") {
       body = [
         el("h2", { class: "title-large" }, ["Save plaintext CSV?"]),
         el("p", {}, [`${s.fileName} will contain your passwords in plain text. Anyone with the file can read them.`]),
@@ -325,18 +427,20 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const convertBtn = el("button", { type: "button", class: "btn filled wide", "data-testid": "convert", onclick: () => void convert() },
       [state.status === "working" ? "Unlocking…" : "Convert"]) as HTMLButtonElement;
     convertBtn.disabled = !canConvert();
+    const chrome = el("div", { class: "chrome" }, [
+      topBar(),
+      phaseRail(),
+      trustStrip(),
+      vault ? unlockedSummary() : null
+    ]);
+    const pane = el("div", { class: "pane", "data-testid": "pane" }, vault
+      ? [results(vault)]
+      : [fileCard(), passwordCard(), formatCard(), convertBtn]);
     root.replaceChildren(
-      el("div", { class: "shell" }, [
-        topBar(),
-        phaseRail(),
-        trustStrip(),
-        fileCard(),
-        passwordCard(),
-        formatCard(),
-        vault ? null : convertBtn,
-        vault ? results(vault) : null
+      el("div", { class: "app" }, [
+        el("div", { class: "shell" }, [chrome, pane]),
+        vault ? stickyBar() : null
       ]),
-      vault ? stickyBar() : el("span"),
       sheet() ?? el("span"),
       state.snackbar ? el("div", { class: "snackbar", role: "status", "data-testid": "snackbar" }, [state.snackbar]) : el("span")
     );

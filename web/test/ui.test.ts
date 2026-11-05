@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { webcrypto } from "node:crypto";
-import { mount } from "../src/ui/app";
+import { isSpassFileName, mount } from "../src/ui/app";
 import { FORMAT_KEY } from "../src/ui/prefs";
 import type { Platform } from "../src/ui/platform";
 import { TEST_PASSWORD, sampleSpass } from "./helpers";
@@ -18,8 +18,8 @@ function setup() {
 
 const q = <T extends Element = HTMLElement>(root: Element, sel: string) => root.querySelector<T>(sel)!;
 
-async function choose(root: HTMLElement, password: string) {
-  const file = new File([await sampleSpass()], "export.spass", { type: "application/octet-stream" });
+async function choose(root: HTMLElement, password: string, fileName = "export.spass") {
+  const file = new File([await sampleSpass()], fileName, { type: "application/octet-stream" });
   const input = q<HTMLInputElement>(root, "#spass-file");
   Object.defineProperty(input, "files", { value: [file], configurable: true });
   input.dispatchEvent(new Event("change"));
@@ -57,6 +57,19 @@ describe("console UI", () => {
     expect(q<HTMLButtonElement>(root, "[data-testid=convert]").disabled).toBe(false);
   });
 
+  it("file input accepts only .spass and rejects other extensions", async () => {
+    const { root } = setup();
+    const input = q<HTMLInputElement>(root, "#spass-file");
+    expect(input.getAttribute("accept")).toBe(".spass");
+    const bad = new File(["nope"], "notes.txt", { type: "text/plain" });
+    Object.defineProperty(input, "files", { value: [bad], configurable: true });
+    input.dispatchEvent(new Event("change"));
+    expect(root.querySelector("[data-testid=filename]")).toBeNull();
+    expect(q(root, ".error").textContent).toMatch(/\.spass/);
+    expect(isSpassFileName("export.spass")).toBe(true);
+    expect(isSpassFileName("export.csv")).toBe(false);
+  });
+
   it("shows a password error for a wrong password", async () => {
     const { root } = setup();
     await choose(root, "nope");
@@ -73,6 +86,19 @@ describe("console UI", () => {
     expect(q(root, ".pill.active").getAttribute("data-phase")).toBe("save");
   });
 
+  it("after unlock collapses setup into a summary and results pane", async () => {
+    const { root } = setup();
+    await unlock(root);
+    expect(root.querySelector("[data-testid=unlocked-summary]")).not.toBeNull();
+    expect(root.querySelector("[data-testid=results]")).not.toBeNull();
+    expect(root.querySelector("[data-testid=pane]")).not.toBeNull();
+    expect(root.querySelector("#spass-password")).toBeNull();
+    expect(root.querySelector("#spass-file")).toBeNull();
+    expect(root.querySelector("[data-testid=convert]")).toBeNull();
+    expect(root.querySelector(".app")).not.toBeNull();
+    expect(root.querySelectorAll(".card.results").length).toBe(1);
+  });
+
   it("does not save on unlock and requires the confirm sheet", async () => {
     const { root, saves } = setup();
     await unlock(root);
@@ -87,14 +113,32 @@ describe("console UI", () => {
     expect(root.querySelector(".reminder")).not.toBeNull();
   });
 
-  it("changing chip after unlock rewrites the CSV without re-decrypting", async () => {
+  it("Google save warns about incomplete rows before placeholders", async () => {
     const { root, saves } = setup();
     await unlock(root);
     q<HTMLButtonElement>(root, "[data-format=google]").click();
     q<HTMLButtonElement>(root, "[data-testid=save]").click();
+    expect(root.querySelector("[data-testid=sheet-incomplete]")).not.toBeNull();
+    expect(saves).toHaveLength(0);
+    q<HTMLButtonElement>(root, "[data-testid=incomplete-keep]").click();
+    expect(root.querySelector("[data-testid=sheet-save]")).not.toBeNull();
     q<HTMLButtonElement>(root, "[data-testid=confirm-save]").click();
     await vi.waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].fileName).toBe("samsung-pass-google.csv");
+    expect(saves[0].csv).toContain("no url");
+  });
+
+  it("incomplete delete drops those rows then saves", async () => {
+    const { root, saves } = setup();
+    await unlock(root);
+    const before = root.querySelectorAll("[data-testid=login]").length;
+    q<HTMLButtonElement>(root, "[data-format=google]").click();
+    q<HTMLButtonElement>(root, "[data-testid=save]").click();
+    q<HTMLButtonElement>(root, "[data-testid=incomplete-delete]").click();
+    expect(root.querySelectorAll("[data-testid=login]").length).toBeLessThan(before);
+    q<HTMLButtonElement>(root, "[data-testid=confirm-save]").click();
+    await vi.waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].csv).not.toContain("no url");
   });
 
   it("shows a blank website field for unknown apps", async () => {

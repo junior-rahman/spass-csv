@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.os.Bundle
 import android.view.WindowManager
 import android.webkit.ValueCallback
@@ -55,7 +56,8 @@ class MainActivity : AppCompatActivity() {
 
     private val pickFile = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val uri = result.data?.data
-        fileCallback?.onReceiveValue(if (result.resultCode == Activity.RESULT_OK && uri != null) arrayOf(uri) else null)
+        val ok = result.resultCode == Activity.RESULT_OK && uri != null && isSpassUri(uri)
+        fileCallback?.onReceiveValue(if (ok) arrayOf(uri!!) else null)
         fileCallback = null
     }
 
@@ -108,10 +110,10 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
+                // HTML accept=".spass"; still open broadly then reject non-.spass by display name.
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
                     type = "*/*"
-                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/octet-stream", "text/plain"))
                 }
                 pickFile.launch(intent)
                 return true
@@ -186,6 +188,17 @@ class MainActivity : AppCompatActivity() {
         if (::appUpdateManager.isInitialized) appUpdateManager.unregisterListener(installListener)
         webView.destroy()
         super.onDestroy()
+    }
+
+    private fun isSpassUri(uri: Uri): Boolean {
+        val name = runCatching {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+        }.getOrNull()
+        if (name?.endsWith(".spass", ignoreCase = true) == true) return true
+        val segment = uri.lastPathSegment?.substringAfterLast('/') ?: return false
+        return segment.endsWith(".spass", ignoreCase = true)
     }
 
     companion object {

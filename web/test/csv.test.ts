@@ -1,5 +1,14 @@
 import type { Login, Note } from "../src/lib/types";
-import { displayTitle } from "../src/lib/model";
+import {
+  PLACEHOLDER_TITLE,
+  PLACEHOLDER_URL,
+  PLACEHOLDER_USERNAME,
+  applyPlaceholders,
+  displayTitle,
+  formatRequiresUrl,
+  incompleteLogins,
+  loginGaps
+} from "../src/lib/model";
 import { DEFAULT_FORMAT, FORMATS, cardsToCsv, cell, fileNameFor, loginsToCsv, parseSpassText, samplePlaintext, toVault } from "../src/lib";
 
 const vault = () => toVault(parseSpassText(samplePlaintext()));
@@ -36,7 +45,7 @@ describe("golden login CSVs", () => {
       `${BOM}name,url,username,password,note\r\n` +
         `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,"Fake entry for the preview\nOTP: ${MAIL_OTP}"\r\n` +
         `Sample Bank,https://chase.com,j.lee,not-a-real-password,\r\n` +
-        `Chase Bank Card,,lee,=x-pass,${EVIL}\r\n`
+        `Chase Bank Card,${PLACEHOLDER_URL},lee,=x-pass,${EVIL}\r\n`
     );
   });
 
@@ -72,11 +81,18 @@ describe("formats", () => {
     expect(DEFAULT_FORMAT).toBe("1password");
     expect(fileNameFor("apple")).toBe("samsung-pass-apple.csv");
   });
+
+  it("only Google requires a URL placeholder", () => {
+    expect(formatRequiresUrl("google")).toBe(true);
+    expect(formatRequiresUrl("1password")).toBe(false);
+    expect(formatRequiresUrl("apple")).toBe(false);
+    expect(formatRequiresUrl("bitwarden")).toBe(false);
+  });
 });
 
 describe("import-safe labels", () => {
   const blank = (over: Partial<Login> = {}): Login =>
-    ({ ...vault().logins[0], name: "", url: "", username: "", password: "", note: "", otp: "", otpUri: "", ...over });
+    ({ ...vault().logins[0], name: "", url: "", username: "", password: "", note: "", otp: "", otpUri: "", appLabel: "", needsSite: false, ...over });
   const HEADERS: Record<string, string> = {
     "1password": "Title,Website,Username,Password,Notes",
     google: "name,url,username,password,note",
@@ -84,18 +100,31 @@ describe("import-safe labels", () => {
     bitwarden: "folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp"
   };
   const titleCol: Record<string, number> = { "1password": 0, google: 0, apple: 0, bitwarden: 3 };
+  const userCol: Record<string, number> = { "1password": 2, google: 2, apple: 2, bitwarden: 8 };
+  const urlCol: Record<string, number> = { "1password": 1, google: 1, apple: 1, bitwarden: 7 };
   const rows = (fmt: string, logins: Login[], notes: Note[] = []) =>
     loginsToCsv(logins, notes, fmt as never).replace(BOM, "").trim().split("\r\n");
 
-  it.each(Object.keys(HEADERS))("%s: exact header and never empty title", (fmt) => {
+  it.each(Object.keys(HEADERS))("%s: exact header and never empty title/username", (fmt) => {
     const out = rows(fmt, [blank({ url: "https://www.github.com/login" }), blank({ username: "bob" }), blank({ password: "p" })]);
     expect(out[0]).toBe(HEADERS[fmt]);
     const titles = out.slice(1).map((r) => r.split(",")[titleCol[fmt]]);
-    expect(titles).toEqual(["github.com", "bob", "Untitled login"]);
+    expect(titles).toEqual(["github.com", "bob", PLACEHOLDER_TITLE]);
+    const users = out.slice(1).map((r) => r.split(",")[userCol[fmt]]);
+    expect(users).toEqual([PLACEHOLDER_USERNAME, "bob", PLACEHOLDER_USERNAME]);
   });
 
-  it("does not invent a URL", () => {
-    expect(rows("google", [blank({ username: "bob" })])[1]).toBe("bob,,bob,,");
+  it("Google fills no url when website is blank; others leave URL blank", () => {
+    const login = blank({ username: "bob" });
+    expect(rows("google", [login])[1].split(",")[urlCol.google]).toBe(PLACEHOLDER_URL);
+    expect(rows("1password", [login])[1].split(",")[urlCol["1password"]]).toBe("");
+    expect(rows("apple", [login])[1].split(",")[urlCol.apple]).toBe("");
+    expect(rows("bitwarden", [login])[1].split(",")[urlCol.bitwarden]).toBe("");
+  });
+
+  it("never invents a password placeholder", () => {
+    const out = rows("google", [blank({ username: "bob" })]);
+    expect(out[1].split(",")[3]).toBe("");
   });
 
   it("bitwarden blank note gets a name", () => {
@@ -105,5 +134,17 @@ describe("import-safe labels", () => {
 
   it("displayTitle keeps a real name", () => {
     expect(displayTitle(blank({ name: " Mail ", url: "https://x.test" }))).toBe("Mail");
+  });
+
+  it("loginGaps and applyPlaceholders follow the locked strings", () => {
+    const login = blank({ password: "x" });
+    expect(loginGaps(login, "google")).toEqual(["title", "username", "url"]);
+    expect(incompleteLogins([login], "1password")).toHaveLength(1);
+    applyPlaceholders(login, "google");
+    expect(login.name).toBe(PLACEHOLDER_TITLE);
+    expect(login.username).toBe(PLACEHOLDER_USERNAME);
+    expect(login.url).toBe(PLACEHOLDER_URL);
+    expect(login.password).toBe("x");
+    expect(loginGaps(login, "google")).toEqual([]);
   });
 });

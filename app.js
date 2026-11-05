@@ -433,9 +433,9 @@
       const username = pick(row, ["username_value", "username", "email", "user_id"]);
       const password = pick(row, ["password_value", "password"]);
       const note = pick(row, ["credential_memo", "note", "notes", "memo"]);
-      const name = pick(row, ["title", "name", "display_name"]) || resolved.appLabel || rawUrl || username || "Untitled login";
+      const name = pick(row, ["title", "name", "display_name"]) || resolved.appLabel || rawUrl || username;
       const otp = otpFields(pick(row, ["otp", "totp", "otp_secret", "one_time_password"]), name, username);
-      if (!username && !password && !resolved.url && !note && !otp.otp && name === "Untitled login") return;
+      if (!username && !password && !resolved.url && !note && !otp.otp && !name) return;
       logins.push({
         id: `login-${index}`,
         name,
@@ -487,7 +487,13 @@
   function vaultCount(vault) {
     return vault.logins.length + vault.cards.length + vault.addresses.length + vault.notes.length;
   }
-  function displayTitle(login) {
+  var PLACEHOLDER_TITLE = "no title";
+  var PLACEHOLDER_USERNAME = "no username";
+  var PLACEHOLDER_URL = "no url";
+  function formatRequiresUrl(format) {
+    return format === "google";
+  }
+  function resolvedTitle(login) {
     const name = login.name.trim() || (login.appLabel ?? "").trim();
     if (name) return name;
     try {
@@ -495,7 +501,35 @@
       if (host) return host;
     } catch {
     }
-    return login.username.trim() || "Untitled login";
+    return login.username.trim();
+  }
+  function displayTitle(login) {
+    return resolvedTitle(login) || PLACEHOLDER_TITLE;
+  }
+  function loginGaps(login, format) {
+    const gaps = [];
+    if (!resolvedTitle(login)) gaps.push("title");
+    if (!login.username.trim()) gaps.push("username");
+    if (formatRequiresUrl(format) && !login.url.trim()) gaps.push("url");
+    return gaps;
+  }
+  function incompleteLogins(logins, format) {
+    return logins.filter((login) => loginGaps(login, format).length > 0);
+  }
+  function applyPlaceholders(login, format) {
+    if (!resolvedTitle(login)) login.name = PLACEHOLDER_TITLE;
+    if (!login.username.trim()) login.username = PLACEHOLDER_USERNAME;
+    if (formatRequiresUrl(format) && !login.url.trim()) {
+      login.url = PLACEHOLDER_URL;
+      login.needsSite = false;
+    }
+  }
+  function csvUsername(login) {
+    return login.username.trim() || PLACEHOLDER_USERNAME;
+  }
+  function csvUrl(login, format) {
+    if (login.url.trim()) return login.url;
+    return formatRequiresUrl(format) ? PLACEHOLDER_URL : "";
   }
 
   // web/src/lib/csv.ts
@@ -524,14 +558,14 @@ ${line}` : line;
     if (format === "1password") {
       return toCsv(
         ["Title", "Website", "Username", "Password", "Notes"],
-        logins.map((l) => [displayTitle(l), l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
+        logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otp)]),
         ["Password"]
       );
     }
     if (format === "apple") {
       return toCsv(
         ["Title", "URL", "Username", "Password", "Notes", "OTPAuth"],
-        logins.map((l) => [displayTitle(l), l.url, l.username, l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
+        logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
         ["Password", "OTPAuth"]
       );
     }
@@ -557,8 +591,8 @@ ${line}` : line;
         l.note,
         "",
         "0",
-        l.url,
-        l.username,
+        csvUrl(l, format),
+        csvUsername(l),
         l.password,
         l.otpUri || l.otp
       ]);
@@ -567,7 +601,7 @@ ${line}` : line;
     }
     return toCsv(
       ["name", "url", "username", "password", "note"],
-      logins.map((l) => [displayTitle(l), l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
+      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otp)]),
       ["password"]
     );
   }
@@ -777,6 +811,9 @@ ${line}` : line;
       reader.readAsText(file);
     });
   }
+  function isSpassFileName(name) {
+    return /\.spass$/i.test(name.trim());
+  }
   function mount(root2, options = {}) {
     const platform = options.platform ?? detectPlatform();
     let state = freshState(loadFormat());
@@ -808,6 +845,34 @@ ${line}` : line;
       const vault = state.vault;
       return { fileName: fileNameFor(state.format), csv: loginsToCsv(vault.logins, vault.notes, state.format) };
     }
+    function openSaveSheet() {
+      state.sheet = { kind: "save", ...primaryCsv() };
+      render();
+    }
+    function beginPrimarySave() {
+      const vault = state.vault;
+      if (!vault) return;
+      const incomplete = incompleteLogins(vault.logins, state.format);
+      if (incomplete.length) {
+        state.sheet = { kind: "incomplete", count: incomplete.length };
+        render();
+        return;
+      }
+      openSaveSheet();
+    }
+    function keepIncomplete() {
+      const vault = state.vault;
+      if (!vault) return;
+      for (const login of incompleteLogins(vault.logins, state.format)) applyPlaceholders(login, state.format);
+      openSaveSheet();
+    }
+    function deleteIncomplete() {
+      const vault = state.vault;
+      if (!vault) return;
+      const drop = new Set(incompleteLogins(vault.logins, state.format).map((l) => l.id));
+      vault.logins = vault.logins.filter((l) => !drop.has(l.id));
+      openSaveSheet();
+    }
     async function confirmSave(fileName, csv) {
       state.sheet = null;
       state.externalPending = true;
@@ -834,7 +899,7 @@ ${line}` : line;
       ]);
     }
     function currentPhase() {
-      if (state.sheet?.kind === "save" || state.saved) return "save";
+      if (state.sheet?.kind === "save" || state.sheet?.kind === "incomplete" || state.saved) return "save";
       return state.vault ? "unlock" : "file";
     }
     function phaseRail() {
@@ -859,14 +924,21 @@ ${line}` : line;
       return state.error?.field === field ? el("p", { class: "error", role: "alert" }, [state.error.message]) : null;
     }
     function fileCard() {
-      const input = el("input", { type: "file", accept: ".spass,application/octet-stream,text/plain", id: "spass-file", class: "visually-hidden" });
+      const input = el("input", { type: "file", accept: ".spass", id: "spass-file", class: "visually-hidden" });
       input.addEventListener("click", () => {
         state.externalPending = true;
       });
       input.addEventListener("change", () => {
         state.externalPending = false;
-        state.file = input.files?.[0] ?? null;
-        state.error = null;
+        const picked = input.files?.[0] ?? null;
+        if (picked && !isSpassFileName(picked.name)) {
+          state.file = null;
+          state.error = { field: "file", message: "Choose a .spass export from Samsung Pass." };
+          input.value = "";
+        } else {
+          state.file = picked;
+          state.error = null;
+        }
         render();
       });
       return el("section", { class: "card" }, [
@@ -927,6 +999,46 @@ ${line}` : line;
         el("p", { class: "helper" }, [hint])
       ]);
     }
+    function unlockedSummary() {
+      const name = state.file?.name ?? "export.spass";
+      const formatLabel = FORMATS.find((f) => f.id === state.format).label;
+      return el("section", { class: "summary", "data-testid": "unlocked-summary" }, [
+        el("div", { class: "summary-main" }, [
+          el("p", { class: "summary-file", "data-testid": "filename" }, [name]),
+          el(
+            "div",
+            { class: "chips compact", role: "radiogroup", "aria-label": "Password manager" },
+            FORMATS.map((f) => el("button", {
+              type: "button",
+              role: "radio",
+              class: f.id === state.format ? "chip selected" : "chip",
+              "aria-checked": f.id === state.format ? "true" : "false",
+              "data-format": f.id,
+              onclick: () => {
+                state.format = f.id;
+                storeFormat(f.id);
+                render();
+              }
+            }, [f.label]))
+          ),
+          el("p", { class: "helper" }, [`Saving as ${formatLabel}`])
+        ]),
+        el("button", {
+          type: "button",
+          class: "btn outline summary-change",
+          "data-testid": "change-file",
+          onclick: () => {
+            state.vault = null;
+            state.status = "form";
+            state.saved = false;
+            state.revealed = /* @__PURE__ */ new Set();
+            state.query = "";
+            state.error = null;
+            render();
+          }
+        }, ["Change"])
+      ]);
+    }
     function countsRow(vault) {
       const item = (n, label) => el("div", { class: "count" }, [el("strong", {}, [String(n)]), el("span", {}, [label])]);
       return el("section", { class: "counts", "data-testid": "counts" }, [
@@ -938,23 +1050,24 @@ ${line}` : line;
     }
     function loginRow(login) {
       const shown = state.revealed.has(login.id);
+      const title = login.name.trim() || login.appLabel.trim() || login.username.trim() || "no title";
       const site = login.needsSite ? (() => {
-        const input = el("input", { type: "url", class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${login.name}` });
+        const input = el("input", { type: "url", class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${title}` });
         input.addEventListener("change", () => {
           setManualSite(login, input.value);
           render();
         });
         return el("div", {}, [input, el("p", { class: "helper" }, ["No website in the export. Left blank unless you type one."])]);
-      })() : el("p", { class: "site" }, [login.url]);
+      })() : login.url ? el("p", { class: "site" }, [login.url]) : null;
       return el("li", { class: "login", "data-testid": "login" }, [
         el("div", { class: "login-head" }, [
-          el("strong", {}, [login.name]),
+          el("strong", { class: "login-title" }, [title]),
           el("button", { type: "button", class: "icon-btn", "aria-label": shown ? "Hide password" : "Show password", onclick: () => {
             shown ? state.revealed.delete(login.id) : state.revealed.add(login.id);
             render();
           } }, [icon(shown ? "visibility_off" : "visibility")])
         ]),
-        el("p", { class: "muted" }, [login.username]),
+        el("p", { class: "muted login-user" }, [login.username || "no username"]),
         el("p", { class: "mono" }, [shown ? login.password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"]),
         site
       ]);
@@ -981,7 +1094,7 @@ ${line}` : line;
       if (vault.cards.length) extras.push(extra("Save cards", "samsung-pass-cards.csv", cardsToCsv(vault.cards)));
       if (vault.addresses.length) extras.push(extra("Save addresses", "samsung-pass-addresses.csv", addressesToCsv(vault.addresses)));
       if (vault.notes.length && state.format !== "bitwarden") extras.push(extra("Save notes", "samsung-pass-notes.csv", notesToCsv(vault.notes)));
-      return el("div", { class: "results" }, [
+      return el("section", { class: "card results", "data-testid": "results" }, [
         countsRow(vault),
         search,
         list,
@@ -995,10 +1108,7 @@ ${line}` : line;
           state.sheet = { kind: "clear" };
           render();
         } }, [icon("delete"), "Clear"]),
-        el("button", { type: "button", class: "btn filled", "data-testid": "save", onclick: () => {
-          state.sheet = { kind: "save", ...primaryCsv() };
-          render();
-        } }, [icon("download"), "Save CSV"])
+        el("button", { type: "button", class: "btn filled", "data-testid": "save", onclick: beginPrimarySave }, [icon("download"), "Save CSV"])
       ]);
     }
     function sheet() {
@@ -1009,7 +1119,22 @@ ${line}` : line;
         render();
       };
       let body;
-      if (s.kind === "save") {
+      if (s.kind === "incomplete") {
+        const n = s.count;
+        const noun = n === 1 ? "login" : "logins";
+        body = [
+          el("h2", { class: "title-large" }, ["Incomplete logins"]),
+          el("p", {}, [
+            `${n} ${noun} are missing a title, username, or website required for ${FORMATS.find((f) => f.id === state.format).label}.`
+          ]),
+          el("p", {}, ["Delete them, or keep them with clear placeholders (no title / no username / no url). Passwords stay empty when missing."]),
+          el("div", { class: "sheet-actions stack" }, [
+            el("button", { type: "button", class: "btn danger", "data-testid": "incomplete-delete", onclick: deleteIncomplete }, [`Delete ${n} ${noun}`]),
+            el("button", { type: "button", class: "btn filled", "data-testid": "incomplete-keep", onclick: keepIncomplete }, ["Keep with placeholders"]),
+            el("button", { type: "button", class: "btn outline", onclick: close }, ["Cancel"])
+          ])
+        ];
+      } else if (s.kind === "save") {
         body = [
           el("h2", { class: "title-large" }, ["Save plaintext CSV?"]),
           el("p", {}, [`${s.fileName} will contain your passwords in plain text. Anyone with the file can read them.`]),
@@ -1050,18 +1175,18 @@ ${line}` : line;
         [state.status === "working" ? "Unlocking\u2026" : "Convert"]
       );
       convertBtn.disabled = !canConvert();
+      const chrome = el("div", { class: "chrome" }, [
+        topBar(),
+        phaseRail(),
+        trustStrip(),
+        vault ? unlockedSummary() : null
+      ]);
+      const pane = el("div", { class: "pane", "data-testid": "pane" }, vault ? [results(vault)] : [fileCard(), passwordCard(), formatCard(), convertBtn]);
       root2.replaceChildren(
-        el("div", { class: "shell" }, [
-          topBar(),
-          phaseRail(),
-          trustStrip(),
-          fileCard(),
-          passwordCard(),
-          formatCard(),
-          vault ? null : convertBtn,
-          vault ? results(vault) : null
+        el("div", { class: "app" }, [
+          el("div", { class: "shell" }, [chrome, pane]),
+          vault ? stickyBar() : null
         ]),
-        vault ? stickyBar() : el("span"),
         sheet() ?? el("span"),
         state.snackbar ? el("div", { class: "snackbar", role: "status", "data-testid": "snackbar" }, [state.snackbar]) : el("span")
       );

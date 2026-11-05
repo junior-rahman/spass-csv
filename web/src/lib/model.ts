@@ -1,5 +1,5 @@
 import { extractPackage, siteForPackage } from "./sites";
-import type { Address, Card, Login, Note, ParsedSpass, SpassTable, Vault } from "./types";
+import type { Address, Card, FormatId, Login, Note, ParsedSpass, SpassTable, Vault } from "./types";
 
 function clean(value: string | undefined): string {
   const v = (value ?? "").replace(/\u0000/g, "").trim();
@@ -70,9 +70,9 @@ export function toVault(parsed: ParsedSpass, alreadyPlain = false): Vault {
     const username = pick(row, ["username_value", "username", "email", "user_id"]);
     const password = pick(row, ["password_value", "password"]);
     const note = pick(row, ["credential_memo", "note", "notes", "memo"]);
-    const name = pick(row, ["title", "name", "display_name"]) || resolved.appLabel || rawUrl || username || "Untitled login";
+    const name = pick(row, ["title", "name", "display_name"]) || resolved.appLabel || rawUrl || username;
     const otp = otpFields(pick(row, ["otp", "totp", "otp_secret", "one_time_password"]), name, username);
-    if (!username && !password && !resolved.url && !note && !otp.otp && name === "Untitled login") return;
+    if (!username && !password && !resolved.url && !note && !otp.otp && !name) return;
     logins.push({
       id: `login-${index}`,
       name,
@@ -134,13 +134,61 @@ export function vaultCount(vault: Vault): number {
   return vault.logins.length + vault.cards.length + vault.addresses.length + vault.notes.length;
 }
 
-/** Import-safe label: name → app label → URL host → username → "Untitled login". Never empty; never invents a URL. */
-export function displayTitle(login: Pick<Login, "name" | "url" | "username"> & { appLabel?: string }): string {
+export const PLACEHOLDER_TITLE = "no title";
+export const PLACEHOLDER_USERNAME = "no username";
+export const PLACEHOLDER_URL = "no url";
+
+/** True when this CSV format rejects or skips rows with a blank website/URL. */
+export function formatRequiresUrl(format: FormatId): boolean {
+  return format === "google";
+}
+
+/** Name → app label → URL host → username. Empty string when none of those exist. Never invents a URL. */
+export function resolvedTitle(login: Pick<Login, "name" | "url" | "username"> & { appLabel?: string }): string {
   const name = login.name.trim() || (login.appLabel ?? "").trim();
   if (name) return name;
   try {
     const host = new URL(login.url).hostname.replace(/^www\./, "");
     if (host) return host;
   } catch { /* no usable URL */ }
-  return login.username.trim() || "Untitled login";
+  return login.username.trim();
+}
+
+/** Import-safe label: resolvedTitle → "no title". Never empty; never invents a URL. */
+export function displayTitle(login: Pick<Login, "name" | "url" | "username"> & { appLabel?: string }): string {
+  return resolvedTitle(login) || PLACEHOLDER_TITLE;
+}
+
+export type LoginGap = "title" | "username" | "url";
+
+/** Required CSV fields that are still empty and would receive a placeholder for this format. Password is never listed. */
+export function loginGaps(login: Login, format: FormatId): LoginGap[] {
+  const gaps: LoginGap[] = [];
+  if (!resolvedTitle(login)) gaps.push("title");
+  if (!login.username.trim()) gaps.push("username");
+  if (formatRequiresUrl(format) && !login.url.trim()) gaps.push("url");
+  return gaps;
+}
+
+export function incompleteLogins(logins: Login[], format: FormatId): Login[] {
+  return logins.filter((login) => loginGaps(login, format).length > 0);
+}
+
+/** Fills empty required fields with locked placeholders. Never invents a password. */
+export function applyPlaceholders(login: Login, format: FormatId): void {
+  if (!resolvedTitle(login)) login.name = PLACEHOLDER_TITLE;
+  if (!login.username.trim()) login.username = PLACEHOLDER_USERNAME;
+  if (formatRequiresUrl(format) && !login.url.trim()) {
+    login.url = PLACEHOLDER_URL;
+    login.needsSite = false;
+  }
+}
+
+export function csvUsername(login: Pick<Login, "username">): string {
+  return login.username.trim() || PLACEHOLDER_USERNAME;
+}
+
+export function csvUrl(login: Pick<Login, "url">, format: FormatId): string {
+  if (login.url.trim()) return login.url;
+  return formatRequiresUrl(format) ? PLACEHOLDER_URL : "";
 }
