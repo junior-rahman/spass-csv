@@ -6,9 +6,9 @@
 **Full description:**
 Spcc (Spass to CSV Converter) turns your Samsung Pass export into a CSV you can import into 1Password, Google Password Manager, Apple Passwords, or Bitwarden.
 
-- Converts on your phone. No internet permission. Nothing is uploaded.
+- Converts on your phone. Nothing is uploaded. The only network use is Google Play In-App Updates; conversion stays offline.
 - Four formats, equal support.
-- Never guesses websites — logins without one stay blank so your password manager can't autofill on the wrong site.
+- Never invents websites or passwords. Missing websites warn on Save; you can delete those logins or keep them with clear "no url" placeholders so nothing is guessed.
 - Asks before saving, and reminds you to delete the CSV after import.
 - Follows your phone's light or dark theme.
 
