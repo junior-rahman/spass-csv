@@ -3,8 +3,8 @@
 **Date:** 2026-11-05  
 **Product:** Pass to CSV (Samsung Pass `.spass` → CSV)  
 **Repo:** `junior-rahman/spass-csv`  
-**Status:** Design approved in conversation; awaiting user review of this written spec  
-**Approach:** B — Single-screen Material console  
+**Status:** Design locked — Hybrid A+B+C with system light/dark  
+**Approach:** Hybrid — single-screen console + phase rail + glass/Material dual theme  
 **Related:** Architecture audit `/workspace/spc/AUDIT.md`, Security audit `/workspace/spc/SECURITY.md`, Fix Plan Page (queued until this design ships into implementation)
 
 ---
@@ -20,51 +20,61 @@
 
 ### Non-goals (this redesign)
 
-- Multi-step guided wizard (Approach A was declined).
-- Dark glassy MojaLoss-style UI (Approach C declined).
+- Full-page multi-step wizard (Approach A alone) — guidance is a phase rail on one screen, not separate pages.
+- Pure MojaLoss media-app chrome (Approach C alone) — glass/glow only in dark theme; light stays Material.
 - Server-side conversion or any upload of `.spass` / CSV.
 - In-app APK auto-updater (removed; updates via Play / Releases only).
 - Inventing websites from login names or package strings.
+- Manual theme toggle (theme follows the phone / browser `prefers-color-scheme` only).
 
 ---
 
 ## 2. Product concept
 
-One phone-width screen. Material 3. Everything on one scroll.
+One phone-width screen. Everything on one scroll. Hybrid of Approaches A + B + C:
+
+- **From A:** compact phase rail — `1 · File` → `2 · Unlock` → `3 · Save` — updates in place (not separate wizard pages).
+- **From B:** single-screen Material console, equal format chips, expand-in-place results, sticky Save/Clear, confirm sheets.
+- **From C:** dark theme uses glass cards, glow lock mark, gradient primary CTAs.
 
 **Idle / input region**
 
 1. Top app bar: product name, lock mark, overflow (About, Privacy).
-2. Trust strip: stays on this phone · nothing uploaded.
-3. Card — Export file: choose `.spass`, show filename.
-4. Card — Export password: field + show/hide; helper text that this is the export password, not the Samsung account password.
-5. Card — Save as: four equal format chips (1Password, Google, Apple, Bitwarden).
-6. Primary CTA: Convert.
+2. Phase rail (File / Unlock / Save) — File active while choosing file + password + format.
+3. Trust strip: stays on this phone · nothing uploaded.
+4. Card — Export file: choose `.spass`, show filename.
+5. Card — Export password: field + show/hide; helper text that this is the export password, not the Samsung account password.
+6. Card — Save as: four equal format chips (1Password, Google, Apple, Bitwarden).
+7. Primary CTA: Convert.
 
 **After successful unlock (same screen expands)**
 
-7. Counts row (logins · cards · addresses · notes).
-8. Search field for logins.
-9. Login list: name, username, reveal/hide password; website field only when missing (blank, never auto-guessed).
-10. Sticky bottom actions: Save CSV (opens confirm sheet) · Clear (opens confirm).
-11. Secondary actions: Save cards / addresses / notes when present.
-12. Persistent post-save reminder: delete the CSV after import.
+8. Phase rail advances to Unlock.
+9. Counts row (logins · cards · addresses · notes).
+10. Search field for logins.
+11. Login list: name, username, reveal/hide password; website field only when missing (blank, never auto-guessed).
+12. Sticky bottom actions: Save CSV (opens confirm sheet) · Clear (opens confirm).
+13. Secondary actions: Save cards / addresses / notes when present.
+14. Persistent post-save reminder: delete the CSV after import.
+15. Opening Save confirm advances phase rail to Save.
 
 Sample preview lives under About / overflow, not on the primary path.
 
 ---
 
-## 3. Visual system (Material 3)
+## 3. Visual system (Material 3 + dual theme)
 
-- **Theme:** Light Material 3 surfaces and elevated cards (dark theme deferred).
-- **Shape:** 16–28 dp corner radii on cards/buttons; 8 dp grid.
+- **Theme:** Follow the phone / browser default via `prefers-color-scheme` (WebView respects Android day/night). No in-app theme toggle.
+  - **Light:** Material 3 surfaces, elevated white cards, teal primary `#1e3a34`, neutral ink.
+  - **Dark:** Deep forest shell (`#0c1210`–`#121a18`), translucent glass cards, glow on lock mark, gradient primary CTAs (`#3d8f76` → `#1e3a34`).
+- **Shape:** 16–28 dp corner radii on cards/buttons; 8 dp grid; phase pills fully rounded.
 - **Padding:** 16 dp page padding; respect safe-area insets.
-- **Color:** Deep teal-forest primary family based on `#1e3a34` (keeps brand continuity without stock Material purple). Neutral surfaces/ink; danger for errors.
+- **Color:** Deep teal-forest primary family based on `#1e3a34` in both themes. Danger for errors; amber callout for missing website.
 - **Type:** System / Roboto. Title-large for app name; body-medium for body; label-large for chips.
 - **Buttons:** Filled primary = Convert / Save; tonal = selected format chip; outline = Clear / secondary.
 - **Icons:** Material Symbols only (folder, lock, download, delete, visibility).
 - **Motion:** Short standard Material transitions; no decorative illustration clutter.
-- **App bar:** Small lock mark + title; no large hero art.
+- **App bar:** Small lock mark + title; no large hero art (glow is subtle on the mark only in dark).
 
 APK and local web page share the same visual tokens and layout.
 
@@ -174,7 +184,7 @@ Extra exports (cards, addresses, notes, full table) remain secondary buttons whe
 
 ## 10. Acceptance criteria
 
-- [ ] One-screen Material console matches Sections 2–4 visually and in flow.
+- [ ] One-screen hybrid console matches Sections 2–4 visually and in flow (phase rail + light/dark).
 - [ ] Four formats equal; no silent preference beyond last-used.
 - [ ] No auto-save; no guessed websites; save + clear confirmations present.
 - [ ] APK uses WebViewAssetLoader; no localhost server; no in-app updater.
@@ -190,7 +200,7 @@ Extra exports (cards, addresses, notes, full table) remain secondary buttons whe
 | Topic | Default in this spec |
 |-------|----------------------|
 | Default format chip | Last-used, else 1Password |
-| Dark theme | Deferred |
+| Dark theme | System `prefers-color-scheme` / Android day-night — required |
 | Paid vs free on Play | Deferred (UI assumes paid-ready) |
 | Package rename for Play | Keep `com.jrrahman.passtocsv` unless store policy forces change |
 | Native Compose rewrite | Out of scope; WebView + shared web UI |
