@@ -3,105 +3,1136 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Samsung Pass to CSV</title>
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F4EF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C1917" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; script-src 'sha256-bXc5ngHyx5yK6lliiJOGeRm7duhrYn87wOJuB4lSYqE='" />
+    <meta name="description" content="Spcc — Spass to CSV Converter" />
+    <title>Spcc</title>
     <style>
-      :root {
-        color-scheme: light;
-        --paper: #f3f1ec;
-        --card: #fffcf8;
-        --ink: #1c1916;
-        --muted: #5e5953;
-        --faint: #7a746c;
-        --line: #e3ddd4;
-        --accent: #1e3a34;
-        --accent-fg: #f4f1ea;
-        --danger: #8c3b32;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        background: var(--paper);
-        color: var(--ink);
-        font: 16px/1.5 "Roboto", "Noto Sans", "Segoe UI", system-ui, sans-serif;
-      }
-      button, input { font: inherit; }
-      button { cursor: pointer; }
-      .shell {
-        max-width: 32rem;
-        margin: 0 auto;
-        padding: max(1.25rem, env(safe-area-inset-top)) 1rem max(2rem, env(safe-area-inset-bottom));
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-      }
-      h1 { font-size: 1.25rem; line-height: 1.25; margin: 0; }
-      p { margin: 0; }
-      .muted { color: var(--muted); font-size: 0.875rem; }
-      .faint { color: var(--faint); font-size: 0.875rem; }
-      .danger { color: var(--danger); font-size: 0.875rem; }
-      .strong { font-weight: 600; }
-      .label { font-size: 0.875rem; font-weight: 600; margin-top: 0.75rem; }
-      .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 0.875rem; word-break: break-all; margin-top: 0.5rem; }
-      .card {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 1.75rem;
-        padding: 1rem;
-      }
-      .note { border-radius: 0.75rem; }
-      .stack, .field { display: flex; flex-direction: column; gap: 0.5rem; }
-      .row { display: flex; gap: 0.5rem; }
-      .row > * { flex: 1; }
-      .spread { align-items: flex-start; }
-      .spread > :first-child { min-width: 0; }
-      .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-      .steps { margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.875rem; display: flex; flex-direction: column; gap: 0.35rem; }
-      .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
-      input[type="file"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-      input:not([type="file"]) {
-        min-height: 3rem;
-        width: 100%;
-        border: 1px solid var(--line);
-        background: var(--paper);
-        border-radius: 0.75rem;
-        padding: 0 0.75rem;
-      }
-      input:focus-visible, button:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); outline-offset: 2px; }
-      .btn {
-        min-height: 3rem;
-        border-radius: 0.75rem;
-        border: 1px solid transparent;
-        padding: 0 1rem;
-        font-weight: 600;
-      }
-      .btn.primary { background: var(--accent); color: var(--accent-fg); }
-      .btn.ghost { background: var(--card); color: var(--ink); border-color: var(--line); }
-      .btn.slim { min-height: 2.75rem; font-size: 0.875rem; }
-      .btn.icon { width: 4.5rem; flex: 0 0 auto; }
-      .btn:disabled { opacity: 0.6; }
-      .link { min-height: 2.75rem; background: none; border: 0; color: var(--muted); font-weight: 600; }
-      .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; background: var(--paper); border-radius: 0.75rem; padding: 0.25rem; }
-      .seg button { min-height: 2.75rem; border: 0; border-radius: 0.5rem; background: transparent; font-weight: 600; }
-      .seg button.on { background: var(--accent); color: var(--accent-fg); }
-      label.btn { display: flex; align-items: center; justify-content: center; }
+/* Spcc — dual theme (Warm Grove: Grove #3F4F3A, Olive #6B8F71, Fern #A3C9A8, Cream #F7F4EF, Soil #1C1917). Follows prefers-color-scheme (Android WebView day/night). No in-app toggle. */
+:root {
+  color-scheme: light dark;
+  --primary: #3F4F3A;
+  --on-primary: #F7F4EF;
+  --primary-container: #A3C9A8;
+  --on-primary-container: #1C1917;
+  --surface: #F7F4EF;
+  --card: #ffffff;
+  --card-border: #E4DED3;
+  --ink: #1C1917;
+  --muted: #5E5A52;
+  --danger: #a3362b;
+  --amber: #8a5a00;
+  --amber-bg: #fff4dc;
+  --cta: var(--primary);
+  --card-blur: none;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.05);
+  --mark-glow: none;
+  --radius-card: 24px;
+  --radius-btn: 20px;
+  --radius-sheet: 28px;
+  --pad: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: linear-gradient(180deg, #1C1917 0%, #0F1410 100%);
+    --card: rgba(255, 255, 255, 0.06);
+    --card-border: rgba(255, 255, 255, 0.12);
+    --ink: #F7F4EF;
+    --muted: #B5B0A6;
+    --primary-container: rgba(107, 143, 113, 0.30);
+    --on-primary-container: #A3C9A8;
+    --danger: #ff8a7a;
+    --amber: #ffcf70;
+    --amber-bg: rgba(255, 191, 64, 0.12);
+    --cta: linear-gradient(135deg, #6B8F71 0%, #3F4F3A 100%);
+    --card-blur: blur(16px) saturate(140%);
+    --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --mark-glow: 0 0 18px rgba(163, 201, 168, 0.70);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--surface); background-attachment: fixed; color: var(--ink); font: 16px/1.5 Roboto, "Noto Sans", system-ui, sans-serif; }
+button, input { font: inherit; color: inherit; }
+.shell { max-width: 32rem; margin: 0 auto; padding: max(var(--pad), env(safe-area-inset-top)) var(--pad) calc(96px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--pad); }
+.appbar { display: flex; align-items: center; gap: 8px; }
+.appbar .icon[data-icon="lock"] { border-radius: 50%; box-shadow: var(--mark-glow); }
+.appbar .icon-btn { margin-left: auto; }
+.title-large { font-size: 1.375rem; font-weight: 500; margin: 0; }
+.label-large { font-size: 0.875rem; font-weight: 600; margin: 0; }
+.rail { list-style: none; display: flex; gap: 8px; margin: 0; padding: 0; }
+.pill { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--card-border); color: var(--muted); font-size: 0.8125rem; }
+.pill.done { color: var(--ink); }
+.pill.active { background: var(--primary-container); color: var(--on-primary-container); border-color: transparent; font-weight: 600; }
+.trust { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--muted); font-size: 0.875rem; }
+.card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius-card); padding: var(--pad); display: flex; flex-direction: column; gap: 8px; box-shadow: var(--card-shadow); backdrop-filter: var(--card-blur); -webkit-backdrop-filter: var(--card-blur); }
+.field-row { display: flex; gap: 8px; }
+.field-row input, .search, .site-input { flex: 1; width: 100%; padding: 12px 16px; border-radius: 16px; border: 1px solid var(--card-border); background: transparent; }
+.helper, .muted { color: var(--muted); font-size: 0.875rem; margin: 0; }
+.error { color: var(--danger); font-size: 0.875rem; margin: 0; }
+.filename, .site { margin: 0; font-size: 0.875rem; word-break: break-all; }
+.mono { font-family: ui-monospace, Menlo, monospace; font-size: 0.875rem; margin: 0; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 24px; border-radius: var(--radius-btn); border: 1px solid transparent; cursor: pointer; font-weight: 600; }
+.btn.filled { background: var(--cta); color: var(--on-primary); }
+.btn.outline { background: transparent; border-color: var(--card-border); }
+.btn.danger { background: var(--danger); color: #fff; }
+.btn.wide { width: 100%; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.icon-btn { background: none; border: 0; padding: 8px; border-radius: 50%; cursor: pointer; }
+.icon { display: inline-block; width: 20px; height: 20px; }
+.icon::before { content: attr(data-icon); font-family: "Material Symbols Outlined", sans-serif; font-size: 0; }
+.chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.chip { min-height: 40px; border-radius: 12px; border: 1px solid var(--card-border); background: transparent; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+.chip.selected { background: var(--primary-container); color: var(--on-primary-container); border-color: transparent; }
+.counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.count { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 8px; text-align: center; display: flex; flex-direction: column; }
+.list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.login { background: var(--card); border: 1px solid var(--card-border); border-radius: 20px; padding: 12px var(--pad); backdrop-filter: var(--card-blur); }
+.login-head { display: flex; justify-content: space-between; align-items: center; }
+.login .site-input + .helper { color: var(--amber); }
+.login:has(.site-input) { border-color: var(--amber); background: var(--amber-bg); }
+.extras { display: flex; flex-wrap: wrap; gap: 8px; }
+.reminder { display: flex; gap: 8px; color: var(--amber); background: var(--amber-bg); padding: 12px; border-radius: 16px; margin: 0; }
+.sticky { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 12px var(--pad) max(12px, env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--card-border); backdrop-filter: var(--card-blur); }
+.sticky .btn { flex: 1; }
+.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); display: flex; align-items: flex-end; justify-content: center; }
+.sheet { width: 100%; max-width: 32rem; background: var(--card); color: var(--ink); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; padding: 24px var(--pad) max(24px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; backdrop-filter: var(--card-blur); }
+@media (prefers-color-scheme: dark) { .sheet { background: #1F1D1A; } }
+.sheet p { margin: 0; }
+.strong { font-weight: 600; }
+.sheet-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.snackbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 96px; background: #1C1917; color: #F7F4EF; padding: 12px 16px; border-radius: 12px; max-width: 90vw; }
+@media (prefers-reduced-motion: no-preference) { .btn, .chip, .pill { transition: background 150ms ease, opacity 150ms ease; } }
     </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script>
-"use strict";(()=>{function M(e){let t="";for(let s=0;s<e.length;s+=32768)t+=String.fromCharCode(...e.subarray(s,s+32768));return btoa(t)}function et(e){let t=atob(e),o=new Uint8Array(t.length);for(let s=0;s<t.length;s++)o[s]=t.charCodeAt(s);return o}function B(e){let t=new ArrayBuffer(e.byteLength);return new Uint8Array(t).set(e),t}var f=class extends Error{code;constructor(t,o){super(o),this.code=t,this.name="SpassError"}};var C=20,P=16,Et=7e4,st=new TextEncoder,Lt=new TextDecoder("utf-8",{fatal:!0});async function ot(e,t,o){let s=await crypto.subtle.importKey("raw",st.encode(e),"PBKDF2",!1,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:B(t),iterations:Et,hash:"SHA-256"},s,{name:"AES-CBC",length:256},!1,[o])}async function nt(e,t){let o=e.replace(/^\uFEFF/,"").replace(/\s+/g,"");if(!o)throw new f("format","That file is empty.");let s;try{s=et(o)}catch{throw new f("format","This is not a Samsung Pass .spass file. Export again from Samsung Pass, or pick the .spass file rather than a screenshot.")}if(s.length<C+P+16)throw new f("format","This file is too small to be a Samsung Pass export.");if((s.length-C-P)%16!==0)throw new f("format","This file is not a complete Samsung Pass export.");let n=s.subarray(0,C),r=s.subarray(C,C+P),l=s.subarray(C+P),g;try{let c=await ot(t,n,"decrypt");g=await crypto.subtle.decrypt({name:"AES-CBC",iv:B(r)},c,B(l))}catch{throw new f("password","Couldn't unlock this file. Use the password you set while exporting, not your Samsung account password.")}let h;try{h=Lt.decode(g)}catch{throw new f("password","Couldn't unlock this file. Use the password you set while exporting, not your Samsung account password.")}if(!h.includes("next_table")&&!h.includes(";"))throw new f("password","Couldn't unlock this file. Use the password you set while exporting, not your Samsung account password.");return h}async function rt(e,t){let o=crypto.getRandomValues(new Uint8Array(C)),s=crypto.getRandomValues(new Uint8Array(P)),n=await ot(t,o,"encrypt"),r=await crypto.subtle.encrypt({name:"AES-CBC",iv:B(s)},n,B(st.encode(e))),l=new Uint8Array(r),g=new Uint8Array(C+P+l.length);return g.set(o,0),g.set(s,C),g.set(l,C+P),M(g)}function Ut(e){return/[",\r\n]/.test(e)?`"${e.replace(/"/g,'""')}"`:e}function A(e,t){return`\uFEFF${[e,...t].map(s=>s.map(n=>Ut(n??"")).join(",")).join(`\r
-`)}\r
-`}function at(e,t){if(!t||e.includes(t))return e;let o=`OTP: ${t}`;return e?`${e}
-${o}`:o}function K(e,t,o){if(o==="apple")return A(["Title","URL","Username","Password","Notes","OTPAuth"],e.map(s=>[s.name,s.url,s.username,s.password,s.note,s.otpUri]));if(o==="bitwarden"){let s=e.map(r=>["","0","login",r.name,at(r.note,r.otpUri?"":r.otp),"","0",r.url,r.username,r.password,r.otpUri||r.otp]),n=t.map(r=>["","0","note",r.title,r.body,"","0","","","",""]);return A(["folder","favorite","type","name","notes","fields","reprompt","login_uri","login_username","login_password","login_totp"],[...s,...n])}return A(["name","url","username","password","note"],e.map(s=>[s.name,s.url,s.username,s.password,at(s.note,s.otp)]))}function it(e){return A(["nickname","name_on_card","number","exp_month","exp_year","security_code","note"],e.map(t=>[t.nickname,t.holder,t.number,t.expMonth,t.expYear,t.code,t.note]))}function ct(e){return A(["name","company","street","city","state","postal_code","country","phone","email"],e.map(t=>[t.name,t.company,t.street,t.city,t.state,t.postal,t.country,t.phone,t.email]))}function pt(e){return A(["title","details"],e.map(t=>[t.title,t.body]))}function lt(e){return A(e.headers,e.rows.map(t=>e.headers.map(o=>t[o]??"")))}function Y(e){return e==="apple"?"samsung-pass-apple.csv":e==="bitwarden"?"samsung-pass-bitwarden.csv":"samsung-pass-google.csv"}function j(e,t){let o=new Blob([t],{type:"text/csv;charset=utf-8"}),s=URL.createObjectURL(o),n=document.createElement("a");n.href=s,n.download=e,n.rel="noopener",document.body.appendChild(n),n.click(),n.remove(),window.setTimeout(()=>URL.revokeObjectURL(s),1500)}var Pt={"com.facebook.katana":"https://facebook.com","com.facebook.orca":"https://messenger.com","com.instagram.android":"https://instagram.com","com.twitter.android":"https://x.com","com.zhiliaoapp.musically":"https://tiktok.com","com.ss.android.ugc.trill":"https://tiktok.com","com.google.android.gm":"https://mail.google.com","com.google.android.youtube":"https://youtube.com","com.google.android.apps.maps":"https://maps.google.com","com.whatsapp":"https://web.whatsapp.com","com.snapchat.android":"https://snapchat.com","com.spotify.music":"https://spotify.com","com.netflix.mediaclient":"https://netflix.com","com.amazon.mShop.android.shopping":"https://amazon.com","com.amazon.avod.thirdpartyclient":"https://primevideo.com","com.amazon.kindle":"https://amazon.com","com.audible.application":"https://audible.com","com.paypal.android.p2pmobile":"https://paypal.com","com.ebay.mobile":"https://ebay.com","com.linkedin.android":"https://linkedin.com","com.pinterest":"https://pinterest.com","com.reddit.frontpage":"https://reddit.com","com.discord":"https://discord.com","com.slack":"https://slack.com","com.microsoft.office.outlook":"https://outlook.live.com","com.microsoft.teams":"https://teams.microsoft.com","com.microsoft.office.word":"https://office.com","com.dropbox.android":"https://dropbox.com","com.ubercab":"https://uber.com","com.ubercab.eats":"https://ubereats.com","com.airbnb.android":"https://airbnb.com","com.venmo":"https://venmo.com","com.chase.sig.android":"https://chase.com","com.wf.wellsfargomobile":"https://wellsfargo.com","com.infonow.bofa":"https://bankofamerica.com","com.citi.citimobile":"https://citi.com","com.capitalone.mobile":"https://capitalone.com","com.americanexpress.android.acctsvcs.us":"https://americanexpress.com","com.ally.MobileBanking":"https://ally.com","com.schwab.mobile":"https://schwab.com","com.fidelity.android":"https://fidelity.com","com.robinhood.android":"https://robinhood.com","com.coinbase.android":"https://coinbase.com","org.telegram.messenger":"https://telegram.org","com.viber.voip":"https://viber.com","com.skype.raider":"https://skype.com","com.yahoo.mobile.client.android.mail":"https://mail.yahoo.com","com.disney.disneyplus":"https://disneyplus.com","com.hulu.plus":"https://hulu.com","com.wbd.stream":"https://max.com","com.soundcloud.android":"https://soundcloud.com","com.apple.android.music":"https://music.apple.com","com.walmart.android":"https://walmart.com","com.target.ui":"https://target.com","com.bestbuy.android":"https://bestbuy.com","com.starbucks.mobilecard":"https://starbucks.com","com.dd.doordash":"https://doordash.com","com.grubhub.android":"https://grubhub.com","com.booking":"https://booking.com","com.expedia.bookings":"https://expedia.com","com.delta.mobile.android":"https://delta.com","com.united.mobile.android":"https://united.com","com.aa.android":"https://aa.com","com.southwestairlines.mobile":"https://southwest.com","com.etsy.android":"https://etsy.com","com.zillow.android.zillowmap":"https://zillow.com","com.duolingo":"https://duolingo.com","com.android.vending":"https://play.google.com","com.google.android.apps.walletnfcrel":"https://pay.google.com","com.google.android.apps.docs":"https://docs.google.com","com.google.android.apps.photos":"https://photos.google.com","com.bitwarden":"https://bitwarden.com","com.x8bit.bitwarden":"https://bitwarden.com","com.lastpass.lpandroid":"https://lastpass.com","com.onepassword.android":"https://1password.com","com.dashlane":"https://dashlane.com","proton.android.pass":"https://proton.me","ch.protonmail.android":"https://proton.me","com.github.android":"https://github.com","com.todoist":"https://todoist.com","com.evernote":"https://evernote.com","com.nytimes.android":"https://nytimes.com","com.samsung.android.spay":"https://samsung.com","com.sec.android.app.sbrowser":"https://samsung.com"},dt=new Map;for(let[e,t]of Object.entries(Pt))dt.set(e.toLowerCase(),t);function mt(e){let t=e.trim().toLowerCase();return t?dt.get(t)??"":""}function ut(e){let t=e.trim(),o=t.match(/^android(?:app)?:\/\/([^/\s]+)/i);return o?o[1]:/^[A-Za-z][\w]*(\.[\w-]+){2,}$/.test(t)?t:""}function At(e){let t=(e??"").replace(/\u0000/g,"").trim();return t==="&&&NULL&&&"?"":t}function d(e,t){for(let o of t){let s=At(e[o]);if(s)return s}return""}function O(e){let t=e.trim();return t?/^https?:\/\//i.test(t)?t:/^[a-z0-9.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(t)?`https://${t}`:t:""}function It(e,t){let o=t||ut(e),s=o?mt(o):"";if(s)return{url:s,needsSite:!1,appLabel:o};if(/^https?:\/\//i.test(e))return{url:e,needsSite:!1,appLabel:""};if(o)return{url:"",needsSite:!0,appLabel:o};let n=O(e);return/^https?:\/\//i.test(n)?{url:n,needsSite:!1,appLabel:""}:e?{url:e,needsSite:!0,appLabel:""}:{url:"",needsSite:!0,appLabel:""}}function Bt(e,t,o){let s=e.trim();if(!s)return{otp:"",otpUri:""};if(s.toLowerCase().startsWith("otpauth://"))return{otp:s,otpUri:s};let n=s.replace(/\s+/g,"");if(/^[A-Za-z2-7]+=*$/.test(n)&&n.replace(/=/g,"").length>=16){let r=encodeURIComponent(o?`${t}:${o}`:t||"Account"),l=encodeURIComponent(t||"Account"),g=`otpauth://totp/${r}?secret=${n.replace(/=/g,"").toUpperCase()}&issuer=${l}`;return{otp:s,otpUri:g}}return{otp:s,otpUri:""}}function H(e,t){return e.tables.find(o=>o.type===t)??null}function W(e,t=!1){let o=H(e,"passwords"),s=[];(o?.rows??[]).forEach((c,v)=>{let E=d(c,["package_name","app_package","package"]),k=d(c,["host_url","origin_url","url","action_url"]),L=It(k,E),_=d(c,["username_value","username","email","user_id"]),x=d(c,["password_value","password"]),F=d(c,["credential_memo","note","notes","memo"]),$=d(c,["title","name","display_name"])||L.appLabel||k||_||"Untitled login",I=Bt(d(c,["otp","totp","otp_secret","one_time_password"]),$,_);!_&&!x&&!L.url&&!F&&!I.otp&&$==="Untitled login"||s.push({id:`login-${v}`,name:$,url:L.url,username:_,password:x,note:F,otp:I.otp,otpUri:I.otpUri,needsSite:L.needsSite||!/^https?:\/\//i.test(L.url),appLabel:L.appLabel})});let n=(H(e,"cards")?.rows??[]).map((c,v)=>({id:`card-${v}`,nickname:d(c,["reserved_5","card_name","nickname","name"])||"Card",holder:d(c,["name_on_card","cardholder_name","holder"]),number:d(c,["card_number","number"]),expMonth:d(c,["expiration_month","exp_month"]),expYear:d(c,["expiration_year","exp_year"]),code:d(c,["security_code","cvv","cvc"]),note:d(c,["card_memo","memo","note","notes"])})).filter(c=>c.holder||c.number||c.nickname!=="Card"),r=(H(e,"addresses")?.rows??[]).map((c,v)=>({id:`address-${v}`,name:d(c,["name","full_name","first_name"]),company:d(c,["company","company_name"]),street:d(c,["street_address","address1","address","street"]),city:d(c,["city"]),state:d(c,["state","region","province"]),postal:d(c,["postal_code","zip","zipcode"]),country:d(c,["country_code","country"]),phone:d(c,["phone","phone_number","tel"]),email:d(c,["email"])})).filter(c=>c.name||c.street||c.city),l=(H(e,"notes")?.rows??[]).map((c,v)=>({id:`note-${v}`,title:d(c,["note_title","title","name"])||"Note",body:d(c,["note_detail","note","notes","detail","content"])})).filter(c=>c.title!=="Note"||c.body),g=new Set(["passwords","cards","addresses","notes"]),h=e.tables.filter(c=>!g.has(c.type)&&c.rows.length>0);return{version:e.version,logins:s,cards:n,addresses:r,notes:l,passwordTable:o,otherTables:h,alreadyPlain:t}}var ht=["passwords","cards","addresses","notes"],$t={password:"passwords",passwords:"passwords",credential:"passwords",credentials:"passwords",card:"cards",cards:"cards",address:"addresses",addresses:"addresses",identity:"addresses",identities:"addresses",note:"notes",notes:"notes",secure_note:"notes",secure_notes:"notes"},Nt={passwords:["password_value","username_value","origin_url","host_url"],cards:["card_number","name_on_card","expiration_month","security_code"],addresses:["street_address","postal_code","country_code"],notes:["note_title","note_detail"]},gt="&&&NULL&&&";function Rt(e){let o=e.replace(/\r\n/g,`
-`).replace(/\r/g,`
-`).split(`
-`);return o.length>0&&o[o.length-1]===""&&o.pop(),o}function Ft(e){let t=e.replace(/,/g,";").split(";").map(s=>s.trim().toLowerCase()).filter(Boolean);if(t.length===0)return[];if(t.every(s=>s==="true"||s==="false")){let s=[];return t.slice(0,ht.length).forEach((n,r)=>{n==="true"&&s.push(ht[r])}),s}let o=[];for(let s of t){let n=$t[s];n&&o.push(n)}return o}function Vt(e){let t=(e[0]??"").trim(),o=(e[1]??"").trim();return t==="samsung_pass_export"&&o.toLowerCase().startsWith("version:")?{version:o,dataTypes:[],rest:e.slice(2)}:{version:t,dataTypes:Ft(o),rest:e.slice(2)}}function zt(e){let t=[],o=[];for(let s of e){let n=s.trim();if(n){if(n==="next_table"){o.length&&t.push(o),o=[];continue}o.length===0&&!n.includes(";")||o.push(n)}}return o.length&&t.push(o),t}function ft(e){let t=[],o=[],s="",n=!1;for(let r=0;r<e.length;r++){let l=e[r];if(n){l==='"'?e[r+1]==='"'?(s+='"',r++):n=!1:s+=l;continue}if(l==='"'){n=!0;continue}if(l===";"){o.push(s),s="";continue}if(l===`
-`||l==="\r"){l==="\r"&&e[r+1]===`
-`&&r++,o.push(s),o.length===1&&o[0]===""||t.push(o),o=[],s="";continue}s+=l}return(s.length>0||o.length>0)&&(o.push(s),o.length===1&&o[0]===""||t.push(o)),t}function Mt(e){for(let t of e){let o=t.codePointAt(0)??0;if(!(o===9||o===10||o===13||o===32)&&(o<32||o===127))return!1}return!0}function jt(e){if(e===""||e===gt)return"";if(!/^[A-Za-z0-9+/]+={0,2}$/.test(e))return e;let t=e.replace(/=+$/,"");if(t.length%4===1)return e;let o=t+"=".repeat((4-t.length%4)%4);try{let s=atob(o),n=new Uint8Array(s.length);for(let l=0;l<s.length;l++)n[l]=s.charCodeAt(l);let r=new TextDecoder("utf-8",{fatal:!0}).decode(n);if(r&&Mt(r))return r===gt?"":r}catch{}return e}function Ht(e){let t=new Set(e);for(let[o,s]of Object.entries(Nt))if(s.some(n=>t.has(n)))return o;return null}function Ot(e,t){let o=ft(t.join(`
-`));if(o.length===0)return{type:e,headers:[],rows:[]};let s=o[0].map(r=>r.trim());if(s.length===0||s.some(r=>!r))throw new f("format","This export has a table Samsung Pass didn't finish writing.");let n=[];for(let r of o.slice(1)){let l=Math.max(s.length,r.length);for(;s.length<l;)s.push(`extra_${s.length+1}`);let g={};for(let h=0;h<s.length;h++)g[s[h]]=jt(r[h]??"");n.push(g)}return{type:e,headers:s,rows:n}}function Z(e){let t=Rt(e);if(t.length<3)throw new f("format","This file does not look like a Samsung Pass export.");let{version:o,dataTypes:s,rest:n}=Vt(t),r=zt(n);if(r.length===0)throw new f("format","The file unlocked, but it has no password tables.");let l=r.map((g,h)=>{let c=ft(g[0])[0]?.map(k=>k.trim())??[],E=Ht(c)??s[h]??`table_${h+1}`;return Ot(E,g)});return{version:o,tables:l}}function bt(e){return e.includes("next_table")&&e.includes(";")}function u(e){return M(new TextEncoder().encode(e))}function yt(){let e=["title;host_url;username_value;password_value;credential_memo;otp",[u("Sample Mail"),u("https://mail.example.test"),u("ada@example.test"),u("sample-mailbox-pass"),u("Fake entry for the preview"),u("otpauth://totp/Sample:ada@example.test?secret=JBSWY3DPEHPK3PXP&issuer=Sample")].join(";"),[u("Sample Bank"),u("com.chase.sig.android"),u("j.lee"),u("not-a-real-password"),"",""].join(";")],t=["name_on_card;card_number;expiration_month;expiration_year;security_code;reserved_5",[u("Ada Example"),u("4242424242424242"),u("09"),u("2030"),u("123"),u("Sample Visa")].join(";")],o=["name;street_address;city;state;postal_code;country_code",[u("Ada Example"),u("1 Sample Street"),u("Sample City"),u("NY"),u("10001"),u("US")].join(";")],s=["note_title;note_detail",[u("Router note"),u("This is sample text, not a real secret.")].join(";")];return["25","true;true;true;true","false","next_table",...e,"next_table",...t,"next_table",...o,"next_table",...s,""].join(`
-`)}async function wt(e,t){let o=e.replace(/^\uFEFF/,"");if(bt(o)){let r=W(Z(o),!0);if(r.logins.length+r.cards.length+r.addresses.length+r.notes.length===0)throw new f("format","The file opened, but it has no logins, cards, addresses, or notes.");return{vault:r}}if(!t)throw new f("empty","Enter the export password you set in Samsung Pass.");if(!crypto?.subtle)throw new f("format","This browser can't unlock files. Open the page in Chrome.");let s=await nt(o,t),n=W(Z(s),!1);if(n.logins.length+n.cards.length+n.addresses.length+n.notes.length===0)throw new f("format","The file unlocked, but it has no logins, cards, addresses, or notes.");return{vault:n}}var vt=[{id:"google",label:"Google",hint:"Chrome \u2192 Password Manager \u2192 Settings \u2192 Import. One-time codes go in the note."},{id:"apple",label:"Apple",hint:"Settings \u2192 Apps \u2192 Passwords \u2192 Import passwords."},{id:"bitwarden",label:"Bitwarden",hint:"Import as Bitwarden (csv). Logins and notes are in this file. Cards are separate."}];function q(e){let t=e.trim();return/^https?:\/\//i.test(t)||/^[a-z0-9.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(t)}function a(e,t={},o=[]){let s=document.createElement(e);for(let[n,r]of Object.entries(t))n==="class"?s.className=r:s.setAttribute(n,r);for(let n of o)s.append(n);return s}function Dt(e){let t="",o="",s="",n=!1,r="form",l=null,g=!1,h="google",c="",v={},E=!1,k="",L=typeof navigator.share=="function",_=a("main",{class:"shell"});e.replaceChildren(_);function x(){_.replaceChildren(),_.append(F()),r!=="done"?_.append($()):l&&_.append(St(l)),_.append(Ct())}function F(){return a("header",{class:"head"},[a("div",{},[a("h1",{},["Samsung Pass to CSV"]),a("p",{class:"muted"},["Unlock the export on this phone. Nothing is uploaded."])])])}function $(){let i=a("input",{id:"export-password",type:n?"text":"password",autocomplete:"off",autocapitalize:"off",spellcheck:"false"});i.value=s,i.addEventListener("input",()=>{s=i.value});let p=a("input",{type:"file",accept:".spass,.txt,text/plain"});p.addEventListener("change",()=>{let T=p.files?.[0];T&&(o=T.name,T.text().then(U=>{t=U,k="",x()}))});let w=a("label",{class:"btn ghost"},[p,o?"Choose a different file":"Choose .spass file"]),m=a("button",{type:"button",class:"btn icon","aria-label":n?"Hide password":"Show password"},[n?"Hide":"Show"]);m.addEventListener("click",()=>{n=!n,x()});let b=a("button",{type:"submit",class:"btn primary"},[r==="working"?"Unlocking on this phone\u2026":"Convert"]);b.disabled=r==="working";let S=a("form",{class:"card"});return S.append(a("ol",{class:"steps"},[a("li",{},["Open Samsung Pass \u2192 Settings \u2192 Export data."]),a("li",{},["Choose what to include and set an export password."]),a("li",{},["Save the .spass file. Check Downloads if it is not obvious."]),a("li",{},["Pick that file here and type the same password."])]),a("label",{class:"field"},["Export file",w,o?a("p",{class:"muted"},[o]):""]),a("label",{class:"field",for:"export-password"},["Export password",a("div",{class:"row"},[i,m]),a("p",{class:"faint"},["The password you created for the export, not your Samsung account."])])),k&&S.append(a("p",{class:"danger",role:"alert"},[k])),S.append(b),S.addEventListener("submit",T=>{if(T.preventDefault(),!t){k="Choose the .spass file first.",x();return}J(t,s,!1)}),S}function I(i){let p=c.trim().toLowerCase(),w=i.logins.filter(b=>p?[b.name,b.username,b.url,b.appLabel].join(`
-`).toLowerCase().includes(p):!0),m=a("ul",{class:"list"});if(w.length===0)return m.append(a("li",{class:"muted"},["No logins match that search."])),m;for(let b of w)m.append(kt(i,b));return m}function St(i){let p=a("section",{class:"stack"});g&&p.append(a("p",{class:"card note"},["Sample data only. These are not your passwords."]));let w=vt.find(y=>y.id===h)?.hint??"",m=i.logins.filter(y=>!q(y.url)).length,b=[`${i.logins.length} ${i.logins.length===1?"login":"logins"}`,i.cards.length?`${i.cards.length} ${i.cards.length===1?"card":"cards"}`:"",i.addresses.length?`${i.addresses.length} ${i.addresses.length===1?"address":"addresses"}`:"",i.notes.length?`${i.notes.length} ${i.notes.length===1?"note":"notes"}`:""].filter(Boolean).join(" \xB7 "),S=a("div",{class:"seg",role:"radiogroup"});for(let y of vt){let R=a("button",{type:"button",class:y.id===h?"on":""},[y.label]);R.addEventListener("click",()=>{h=y.id,x()}),S.append(R)}let T=a("button",{type:"button",class:"btn primary"},["Save CSV"]);T.addEventListener("click",()=>_t(i));let U=a("div",{class:"stack"},[T]);if(L){let y=a("button",{type:"button",class:"btn ghost"},["Share"]);y.addEventListener("click",()=>{Tt(i)}),U.append(y)}let X=a("div",{class:"card"},[a("p",{class:"strong"},[b]),a("p",{class:"label"},["Save as"]),S,a("p",{class:"muted"},[w]),U]);m>0&&X.append(a("p",{class:"danger"},[`${m} ${m===1?"login has":"logins have"} no website. Google skips those until you add one below.`])),p.append(X);let N=a("div",{class:"wrap"});i.cards.length&&N.append(V("Save cards","samsung-pass-cards.csv",it(i.cards))),i.addresses.length&&N.append(V("Save addresses","samsung-pass-addresses.csv",ct(i.addresses))),i.notes.length&&h!=="bitwarden"&&N.append(V("Save notes","samsung-pass-notes.csv",pt(i.notes))),i.passwordTable&&N.append(V("Save every column","samsung-pass-full-table.csv",lt(i.passwordTable))),p.append(N);let z=a("input",{type:"search",placeholder:"Search name, username, or site"});z.value=c;let D=I(i);if(z.addEventListener("input",()=>{c=z.value;let y=I(i);D.replaceWith(y),D=y}),p.append(a("label",{class:"field"},["Review",z])),p.append(D),E){let y=a("button",{type:"button",class:"btn primary"},["Clear now"]);y.addEventListener("click",Q);let R=a("button",{type:"button",class:"btn ghost"},["Keep"]);R.addEventListener("click",()=>{E=!1,x()}),p.append(a("div",{class:"row"},[y,R]))}else{let y=a("button",{type:"button",class:"btn ghost"},["Clear from this screen"]);y.addEventListener("click",()=>{E=!0,x()}),p.append(y)}let tt=a("button",{type:"button",class:"link"},["Convert another file"]);return tt.addEventListener("click",Q),p.append(tt),p}function kt(i,p){let w=v[p.id]===!0,m=a("button",{type:"button",class:"btn icon","aria-label":w?"Hide password":"Show password"},[w?"Hide":"Show"]);m.addEventListener("click",()=>{v[p.id]=!w,x()});let b=a("li",{class:"card"},[a("div",{class:"row spread"},[a("div",{},[a("p",{class:"strong"},[p.name]),a("p",{class:"muted"},[p.username||"No username"])]),m]),a("p",{class:"mono"},[w?p.password||"No password":"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"])]);if(q(p.url))b.append(a("p",{class:"faint"},[O(p.url)]));else{let S=a("input",{inputmode:"url",placeholder:"example.com",spellcheck:"false"});S.value=p.url,S.addEventListener("input",()=>{let T=S.value;l={...i,logins:i.logins.map(U=>U.id===p.id?{...U,url:T,needsSite:!q(T)}:U)}}),b.append(a("label",{class:"field"},["Website",S]))}return b}function V(i,p,w){let m=a("button",{type:"button",class:"btn ghost slim"},[i]);return m.addEventListener("click",()=>j(p,w)),m}function G(i){return i.logins.map(p=>({...p,url:O(p.url)}))}function _t(i){j(Y(h),K(G(i),i.notes,h))}async function Tt(i){let p=Y(h),w=K(G(i),i.notes,h),m=new File([w],p,{type:"text/csv"});try{if(navigator.canShare?.({files:[m]})){await navigator.share({files:[m],title:p});return}}catch(b){if(b instanceof DOMException&&b.name==="AbortError")return}j(p,w)}function Ct(){if(r==="done")return a("p",{class:"faint"},["Delete the CSV after you import it. This page does not keep a copy."]);let i=a("button",{type:"button",class:"link"},["Preview with sample data"]);return i.disabled=r==="working",i.addEventListener("click",()=>{(async()=>{let p=await rt(yt(),"sample");await J(p,"sample",!0)})()}),a("div",{class:"stack"},[i,a("p",{class:"faint"},["Decryption happens in this browser tab. Passwords stay here until you clear them or leave. Not affiliated with Samsung."])])}async function J(i,p,w){r="working",k="",x();try{l=(await wt(i,p)).vault,g=w,r="done",c="",E=!1;for(let b of Object.keys(v))delete v[b]}catch(m){r="form",k=m instanceof f?m.message:"Couldn't read that file."}x()}function Q(){t="",o="",s="",n=!1,r="form",l=null,g=!1,k="",c="",E=!1;for(let i of Object.keys(v))delete v[i];x()}x()}var xt=document.getElementById("app");xt&&Dt(xt);})();
+    <main id="app"></main>
+    <script>"use strict";
+"use strict";
+(() => {
+  var __defProp = Object.defineProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
+  // web/src/lib/errors.ts
+  var SpassError = class extends Error {
+    constructor(code, message) {
+      super(message);
+      __publicField(this, "code");
+      this.code = code;
+      this.name = "SpassError";
+    }
+  };
+  var WRONG_PASSWORD = "Couldn't unlock this file. Use the password you set while exporting, not your Samsung account password.";
+
+  // web/src/lib/bytes.ts
+  function base64ToBytes(b64) {
+    const binary = atob(b64);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    return out;
+  }
+  function asBuffer(bytes) {
+    const copy = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(copy).set(bytes);
+    return copy;
+  }
+
+  // web/src/lib/header.ts
+  var TYPE_TOKEN = /^(true|false|passwords?|credentials?|cards?|address(es)?|identit(y|ies)|notes?|secure_notes?)$/i;
+  function looksLikeSpassPlaintext(text) {
+    const lines = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").split("\n").map((line) => line.trim());
+    if (lines.length < 3) return false;
+    const [first, second] = lines;
+    let headerOk = false;
+    if (first === "samsung_pass_export" && /^version:\s*\S+$/i.test(second)) headerOk = true;
+    if (/^\d{1,4}$/.test(first)) {
+      const tokens = second.split(/[;,]/).map((token) => token.trim()).filter(Boolean);
+      headerOk = tokens.length > 0 && tokens.every((token) => TYPE_TOKEN.test(token));
+    }
+    if (!headerOk) return false;
+    return lines.slice(2).some((line) => line === "next_table");
+  }
+
+  // web/src/lib/crypto.ts
+  var SALT_BYTES = 20;
+  var IV_BYTES = 16;
+  var ITERATIONS = 7e4;
+  var encoder = new TextEncoder();
+  async function deriveKey(password, salt, usage) {
+    const material = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: asBuffer(salt), iterations: ITERATIONS, hash: "SHA-256" },
+      material,
+      { name: "AES-CBC", length: 256 },
+      false,
+      [usage]
+    );
+  }
+  async function decryptSpass(fileText, password) {
+    const compact = fileText.replace(/^\uFEFF/, "").replace(/\s+/g, "");
+    if (!compact) throw new SpassError("format", "That file is empty.");
+    let raw;
+    try {
+      raw = base64ToBytes(compact);
+    } catch {
+      throw new SpassError(
+        "format",
+        "This is not a Samsung Pass .spass file. Export again from Samsung Pass, or pick the .spass file rather than a screenshot."
+      );
+    }
+    if (raw.length < SALT_BYTES + IV_BYTES + 16) {
+      throw new SpassError("format", "This file is too small to be a Samsung Pass export.");
+    }
+    if ((raw.length - SALT_BYTES - IV_BYTES) % 16 !== 0) {
+      throw new SpassError("format", "This file is not a complete Samsung Pass export.");
+    }
+    const salt = raw.subarray(0, SALT_BYTES);
+    const iv = raw.subarray(SALT_BYTES, SALT_BYTES + IV_BYTES);
+    const ciphertext = raw.subarray(SALT_BYTES + IV_BYTES);
+    let plain;
+    try {
+      const key = await deriveKey(password, salt, "decrypt");
+      plain = await crypto.subtle.decrypt({ name: "AES-CBC", iv: asBuffer(iv) }, key, asBuffer(ciphertext));
+    } catch {
+      throw new SpassError("password", WRONG_PASSWORD);
+    }
+    let text;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(plain);
+    } catch {
+      throw new SpassError("password", WRONG_PASSWORD);
+    }
+    if (!looksLikeSpassPlaintext(text)) throw new SpassError("password", WRONG_PASSWORD);
+    return text;
+  }
+
+  // web/src/lib/parse.ts
+  var DEFAULT_TYPES = ["passwords", "cards", "addresses", "notes"];
+  var TYPE_ALIASES = {
+    password: "passwords",
+    passwords: "passwords",
+    credential: "passwords",
+    credentials: "passwords",
+    card: "cards",
+    cards: "cards",
+    address: "addresses",
+    addresses: "addresses",
+    identity: "addresses",
+    identities: "addresses",
+    note: "notes",
+    notes: "notes",
+    secure_note: "notes",
+    secure_notes: "notes"
+  };
+  var HEADER_HINTS = {
+    passwords: ["password_value", "username_value", "origin_url", "host_url"],
+    cards: ["card_number", "name_on_card", "expiration_month", "security_code"],
+    addresses: ["street_address", "postal_code", "country_code"],
+    notes: ["note_title", "note_detail"]
+  };
+  var NULL_SENTINEL = "&&&NULL&&&";
+  function splitLines(text) {
+    const parts = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    if (parts.length > 0 && parts[parts.length - 1] === "") parts.pop();
+    return parts;
+  }
+  function parseDataTypes(line) {
+    const tokens = line.split(/[;,]/).map((token) => token.trim().toLowerCase()).filter(Boolean);
+    if (tokens.length === 0) return [];
+    if (tokens.every((token) => token === "true" || token === "false")) {
+      const enabled = [];
+      tokens.slice(0, DEFAULT_TYPES.length).forEach((token, index) => {
+        if (token === "true") enabled.push(DEFAULT_TYPES[index]);
+      });
+      return enabled;
+    }
+    const parsed = [];
+    for (const token of tokens) {
+      const alias = TYPE_ALIASES[token];
+      if (alias) parsed.push(alias);
+    }
+    return parsed;
+  }
+  function readHeader(lines) {
+    const first = (lines[0] ?? "").trim();
+    const second = (lines[1] ?? "").trim();
+    if (first === "samsung_pass_export" && second.toLowerCase().startsWith("version:")) {
+      return { version: second, dataTypes: [], rest: lines.slice(2) };
+    }
+    return { version: first, dataTypes: parseDataTypes(second), rest: lines.slice(2) };
+  }
+  function splitTables(lines) {
+    const tables = [];
+    let current = [];
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line === "next_table") {
+        if (current.length) tables.push(current);
+        current = [];
+        continue;
+      }
+      if (current.length === 0 && !line.includes(";")) continue;
+      current.push(line);
+    }
+    if (current.length) tables.push(current);
+    return tables;
+  }
+  function parseSemicolonRecords(input) {
+    const rows = [];
+    let row = [];
+    let field = "";
+    let inQuotes = false;
+    for (let i = 0; i < input.length; i++) {
+      const c = input[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (input[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          field += c;
+        }
+        continue;
+      }
+      if (c === '"') {
+        inQuotes = true;
+        continue;
+      }
+      if (c === ";") {
+        row.push(field);
+        field = "";
+        continue;
+      }
+      if (c === "\n" || c === "\r") {
+        if (c === "\r" && input[i + 1] === "\n") i++;
+        row.push(field);
+        if (!(row.length === 1 && row[0] === "")) rows.push(row);
+        row = [];
+        field = "";
+        continue;
+      }
+      field += c;
+    }
+    if (field.length > 0 || row.length > 0) {
+      row.push(field);
+      if (!(row.length === 1 && row[0] === "")) rows.push(row);
+    }
+    return rows;
+  }
+  function isPrintable(text) {
+    for (const ch of text) {
+      const code = ch.codePointAt(0) ?? 0;
+      if (code === 9 || code === 10 || code === 13 || code === 32) continue;
+      if (code < 32 || code === 127) return false;
+    }
+    return true;
+  }
+  function decodeField(field) {
+    if (field === "" || field === NULL_SENTINEL) return "";
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(field)) return field;
+    const body = field.replace(/=+$/, "");
+    if (body.length % 4 === 1) return field;
+    const padded = body + "=".repeat((4 - body.length % 4) % 4);
+    try {
+      const binary = atob(padded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      if (text && isPrintable(text)) return text === NULL_SENTINEL ? "" : text;
+    } catch {
+    }
+    return field;
+  }
+  function inferType(headers) {
+    const set = new Set(headers);
+    for (const [type, hints] of Object.entries(HEADER_HINTS)) {
+      if (hints.some((hint) => set.has(hint))) return type;
+    }
+    return null;
+  }
+  function parseTable(type, lines) {
+    const records = parseSemicolonRecords(lines.join("\n"));
+    if (records.length === 0) return { type, headers: [], rows: [] };
+    const headers = records[0].map((header) => header.trim());
+    if (headers.length === 0 || headers.some((header) => !header)) {
+      throw new SpassError("format", "This export has a table Samsung Pass didn't finish writing.");
+    }
+    const rows = [];
+    for (const fields of records.slice(1)) {
+      const width = Math.max(headers.length, fields.length);
+      while (headers.length < width) headers.push(`extra_${headers.length + 1}`);
+      const row = {};
+      for (let i = 0; i < headers.length; i++) row[headers[i]] = decodeField(fields[i] ?? "");
+      rows.push(row);
+    }
+    return { type, headers, rows };
+  }
+  function parseSpassText(decrypted) {
+    const lines = splitLines(decrypted);
+    if (lines.length < 3) throw new SpassError("format", "This file does not look like a Samsung Pass export.");
+    const { version, dataTypes, rest } = readHeader(lines);
+    const chunks = splitTables(rest);
+    if (chunks.length === 0) throw new SpassError("format", "The file unlocked, but it has no password tables.");
+    const tables = chunks.map((chunk, index) => {
+      const headers = parseSemicolonRecords(chunk[0])[0]?.map((header) => header.trim()) ?? [];
+      const type = inferType(headers) ?? dataTypes[index] ?? `table_${index + 1}`;
+      return parseTable(type, chunk);
+    });
+    return { version, tables };
+  }
+
+  // web/src/lib/sites.ts
+  var APP_SITES = {
+    "com.facebook.katana": "https://facebook.com",
+    "com.facebook.orca": "https://messenger.com",
+    "com.instagram.android": "https://instagram.com",
+    "com.twitter.android": "https://x.com",
+    "com.zhiliaoapp.musically": "https://tiktok.com",
+    "com.ss.android.ugc.trill": "https://tiktok.com",
+    "com.google.android.gm": "https://mail.google.com",
+    "com.google.android.youtube": "https://youtube.com",
+    "com.google.android.apps.maps": "https://maps.google.com",
+    "com.whatsapp": "https://web.whatsapp.com",
+    "com.snapchat.android": "https://snapchat.com",
+    "com.spotify.music": "https://spotify.com",
+    "com.netflix.mediaclient": "https://netflix.com",
+    "com.amazon.mShop.android.shopping": "https://amazon.com",
+    "com.amazon.avod.thirdpartyclient": "https://primevideo.com",
+    "com.amazon.kindle": "https://amazon.com",
+    "com.audible.application": "https://audible.com",
+    "com.paypal.android.p2pmobile": "https://paypal.com",
+    "com.ebay.mobile": "https://ebay.com",
+    "com.linkedin.android": "https://linkedin.com",
+    "com.pinterest": "https://pinterest.com",
+    "com.reddit.frontpage": "https://reddit.com",
+    "com.discord": "https://discord.com",
+    "com.slack": "https://slack.com",
+    "com.microsoft.office.outlook": "https://outlook.live.com",
+    "com.microsoft.teams": "https://teams.microsoft.com",
+    "com.microsoft.office.word": "https://office.com",
+    "com.dropbox.android": "https://dropbox.com",
+    "com.ubercab": "https://uber.com",
+    "com.ubercab.eats": "https://ubereats.com",
+    "com.airbnb.android": "https://airbnb.com",
+    "com.venmo": "https://venmo.com",
+    "com.chase.sig.android": "https://chase.com",
+    "com.wf.wellsfargomobile": "https://wellsfargo.com",
+    "com.infonow.bofa": "https://bankofamerica.com",
+    "com.citi.citimobile": "https://citi.com",
+    "com.capitalone.mobile": "https://capitalone.com",
+    "com.americanexpress.android.acctsvcs.us": "https://americanexpress.com",
+    "com.ally.MobileBanking": "https://ally.com",
+    "com.schwab.mobile": "https://schwab.com",
+    "com.fidelity.android": "https://fidelity.com",
+    "com.robinhood.android": "https://robinhood.com",
+    "com.coinbase.android": "https://coinbase.com",
+    "org.telegram.messenger": "https://telegram.org",
+    "com.viber.voip": "https://viber.com",
+    "com.skype.raider": "https://skype.com",
+    "com.yahoo.mobile.client.android.mail": "https://mail.yahoo.com",
+    "com.disney.disneyplus": "https://disneyplus.com",
+    "com.hulu.plus": "https://hulu.com",
+    "com.wbd.stream": "https://max.com",
+    "com.soundcloud.android": "https://soundcloud.com",
+    "com.apple.android.music": "https://music.apple.com",
+    "com.walmart.android": "https://walmart.com",
+    "com.target.ui": "https://target.com",
+    "com.bestbuy.android": "https://bestbuy.com",
+    "com.starbucks.mobilecard": "https://starbucks.com",
+    "com.dd.doordash": "https://doordash.com",
+    "com.grubhub.android": "https://grubhub.com",
+    "com.booking": "https://booking.com",
+    "com.expedia.bookings": "https://expedia.com",
+    "com.delta.mobile.android": "https://delta.com",
+    "com.united.mobile.android": "https://united.com",
+    "com.aa.android": "https://aa.com",
+    "com.southwestairlines.mobile": "https://southwest.com",
+    "com.etsy.android": "https://etsy.com",
+    "com.zillow.android.zillowmap": "https://zillow.com",
+    "com.duolingo": "https://duolingo.com",
+    "com.android.vending": "https://play.google.com",
+    "com.google.android.apps.walletnfcrel": "https://pay.google.com",
+    "com.google.android.apps.docs": "https://docs.google.com",
+    "com.google.android.apps.photos": "https://photos.google.com",
+    "com.bitwarden": "https://bitwarden.com",
+    "com.x8bit.bitwarden": "https://bitwarden.com",
+    "com.lastpass.lpandroid": "https://lastpass.com",
+    "com.onepassword.android": "https://1password.com",
+    "com.dashlane": "https://dashlane.com",
+    "proton.android.pass": "https://proton.me",
+    "ch.protonmail.android": "https://proton.me",
+    "com.github.android": "https://github.com",
+    "com.todoist": "https://todoist.com",
+    "com.evernote": "https://evernote.com",
+    "com.nytimes.android": "https://nytimes.com",
+    "com.samsung.android.spay": "https://samsung.com",
+    "com.sec.android.app.sbrowser": "https://samsung.com"
+  };
+  var BY_LOWER = /* @__PURE__ */ new Map();
+  for (const [pkg, url] of Object.entries(APP_SITES)) BY_LOWER.set(pkg.toLowerCase(), url);
+  function siteForPackage(pkg) {
+    const key = pkg.trim().toLowerCase();
+    return key ? BY_LOWER.get(key) ?? "" : "";
+  }
+  function extractPackage(value) {
+    const trimmed = value.trim();
+    const android = trimmed.match(/^android(?:app)?:\/\/([^/\s]+)/i);
+    if (android) return android[1];
+    if (/^[A-Za-z][\w]*(\.[\w-]+){2,}$/.test(trimmed)) return trimmed;
+    return "";
+  }
+
+  // web/src/lib/model.ts
+  function clean(value) {
+    const v = (value ?? "").replace(/\u0000/g, "").trim();
+    return v === "&&&NULL&&&" ? "" : v;
+  }
+  function pick(row, keys) {
+    for (const key of keys) {
+      const value = clean(row[key]);
+      if (value) return value;
+    }
+    return "";
+  }
+  var BARE_DOMAIN = /^[a-z0-9.-]+\.[a-z]{2,}([/:?#].*)?$/i;
+  function normalizeUserUrl(input) {
+    const value = input.trim();
+    if (!value) return "";
+    if (/^https?:\/\//i.test(value)) return value;
+    if (BARE_DOMAIN.test(value)) return `https://${value}`;
+    return "";
+  }
+  function resolveUrl(raw, packageName) {
+    const pkg = packageName || extractPackage(raw);
+    const mapped = pkg ? siteForPackage(pkg) : "";
+    if (mapped) return { url: mapped, needsSite: false, appLabel: pkg };
+    if (/^https?:\/\//i.test(raw)) return { url: raw, needsSite: false, appLabel: "" };
+    if (pkg) return { url: "", needsSite: true, appLabel: pkg };
+    const normalized = normalizeUserUrl(raw);
+    if (normalized) return { url: normalized, needsSite: false, appLabel: "" };
+    return { url: "", needsSite: true, appLabel: "" };
+  }
+  function otpFields(otp, name, username) {
+    const value = otp.trim();
+    if (!value) return { otp: "", otpUri: "" };
+    if (value.toLowerCase().startsWith("otpauth://")) return { otp: value, otpUri: value };
+    const secret = value.replace(/\s+/g, "");
+    if (/^[A-Za-z2-7]+=*$/.test(secret) && secret.replace(/=/g, "").length >= 16) {
+      const label = encodeURIComponent(username ? `${name}:${username}` : name || "Account");
+      const issuer = encodeURIComponent(name || "Account");
+      return { otp: value, otpUri: `otpauth://totp/${label}?secret=${secret.replace(/=/g, "").toUpperCase()}&issuer=${issuer}` };
+    }
+    return { otp: value, otpUri: "" };
+  }
+  function table(parsed, type) {
+    return parsed.tables.find((item) => item.type === type) ?? null;
+  }
+  function toVault(parsed, alreadyPlain = false) {
+    const passwordTable = table(parsed, "passwords");
+    const logins = [];
+    (passwordTable?.rows ?? []).forEach((row, index) => {
+      const packageName = pick(row, ["package_name", "app_package", "package"]);
+      const rawUrl = pick(row, ["host_url", "origin_url", "url", "action_url"]);
+      const resolved = resolveUrl(rawUrl, packageName);
+      const username = pick(row, ["username_value", "username", "email", "user_id"]);
+      const password = pick(row, ["password_value", "password"]);
+      const note = pick(row, ["credential_memo", "note", "notes", "memo"]);
+      const name = pick(row, ["title", "name", "display_name"]) || resolved.appLabel || rawUrl || username || "Untitled login";
+      const otp = otpFields(pick(row, ["otp", "totp", "otp_secret", "one_time_password"]), name, username);
+      if (!username && !password && !resolved.url && !note && !otp.otp && name === "Untitled login") return;
+      logins.push({
+        id: `login-${index}`,
+        name,
+        url: resolved.url,
+        username,
+        password,
+        note,
+        otp: otp.otp,
+        otpUri: otp.otpUri,
+        needsSite: resolved.needsSite,
+        appLabel: resolved.appLabel
+      });
+    });
+    const cards = (table(parsed, "cards")?.rows ?? []).map((row, index) => ({
+      id: `card-${index}`,
+      nickname: pick(row, ["reserved_5", "card_name", "nickname", "name"]) || "Card",
+      holder: pick(row, ["name_on_card", "cardholder_name", "holder"]),
+      number: pick(row, ["card_number", "number"]),
+      expMonth: pick(row, ["expiration_month", "exp_month"]),
+      expYear: pick(row, ["expiration_year", "exp_year"]),
+      code: pick(row, ["security_code", "cvv", "cvc"]),
+      note: pick(row, ["card_memo", "memo", "note", "notes"])
+    })).filter((card) => card.holder || card.number || card.nickname !== "Card");
+    const addresses = (table(parsed, "addresses")?.rows ?? []).map((row, index) => ({
+      id: `address-${index}`,
+      name: pick(row, ["name", "full_name", "first_name"]),
+      company: pick(row, ["company", "company_name"]),
+      street: pick(row, ["street_address", "address1", "address", "street"]),
+      city: pick(row, ["city"]),
+      state: pick(row, ["state", "region", "province"]),
+      postal: pick(row, ["postal_code", "zip", "zipcode"]),
+      country: pick(row, ["country_code", "country"]),
+      phone: pick(row, ["phone", "phone_number", "tel"]),
+      email: pick(row, ["email"])
+    })).filter((item) => item.name || item.street || item.city);
+    const notes = (table(parsed, "notes")?.rows ?? []).map((row, index) => ({
+      id: `note-${index}`,
+      title: pick(row, ["note_title", "title", "name"]) || "Note",
+      body: pick(row, ["note_detail", "note", "notes", "detail", "content"])
+    })).filter((item) => item.title !== "Note" || item.body);
+    const known = /* @__PURE__ */ new Set(["passwords", "cards", "addresses", "notes"]);
+    const otherTables = parsed.tables.filter((item) => !known.has(item.type) && item.rows.length > 0);
+    return { version: parsed.version, logins, cards, addresses, notes, passwordTable, otherTables, alreadyPlain };
+  }
+  function setManualSite(login, input) {
+    login.url = normalizeUserUrl(input);
+    login.needsSite = login.url === "";
+  }
+  function vaultCount(vault) {
+    return vault.logins.length + vault.cards.length + vault.addresses.length + vault.notes.length;
+  }
+
+  // web/src/lib/csv.ts
+  var FORMULA_LEAD = /^[=+\-@\t\r]/;
+  function cell(value, formulaSafe = true) {
+    let v = value;
+    if (formulaSafe && FORMULA_LEAD.test(v)) v = `'${v}`;
+    if (/[",\r\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+    return v;
+  }
+  function toCsv(headers, rows, rawColumns = []) {
+    const raw = headers.map((header) => rawColumns.includes(header));
+    const head = headers.map((header) => cell(header, false)).join(",");
+    const body = rows.map((row) => headers.map((_, i) => cell(row[i] ?? "", !raw[i])).join(","));
+    return `\uFEFF${[head, ...body].join("\r\n")}\r
+`;
+  }
+  function noteWithOtp(note, otp) {
+    if (!otp) return note;
+    if (note.includes(otp)) return note;
+    const line = `OTP: ${otp}`;
+    return note ? `${note}
+${line}` : line;
+  }
+  function loginsToCsv(logins, notes, format) {
+    if (format === "1password") {
+      return toCsv(
+        ["Title", "Website", "Username", "Password", "Notes"],
+        logins.map((l) => [l.name || "Login", l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
+        ["Password"]
+      );
+    }
+    if (format === "apple") {
+      return toCsv(
+        ["Title", "URL", "Username", "Password", "Notes", "OTPAuth"],
+        logins.map((l) => [l.name, l.url, l.username, l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
+        ["Password", "OTPAuth"]
+      );
+    }
+    if (format === "bitwarden") {
+      const headers = [
+        "folder",
+        "favorite",
+        "type",
+        "name",
+        "notes",
+        "fields",
+        "reprompt",
+        "login_uri",
+        "login_username",
+        "login_password",
+        "login_totp"
+      ];
+      const loginRows = logins.map((l) => [
+        "",
+        "0",
+        "login",
+        l.name,
+        l.note,
+        "",
+        "0",
+        l.url,
+        l.username,
+        l.password,
+        l.otpUri || l.otp
+      ]);
+      const noteRows = notes.map((n) => ["", "0", "note", n.title, n.body, "", "0", "", "", "", ""]);
+      return toCsv(headers, [...loginRows, ...noteRows], ["login_password", "login_totp"]);
+    }
+    return toCsv(
+      ["name", "url", "username", "password", "note"],
+      logins.map((l) => [l.name, l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
+      ["password"]
+    );
+  }
+  function cardsToCsv(cards) {
+    return toCsv(
+      ["nickname", "name_on_card", "number", "exp_month", "exp_year", "security_code", "note"],
+      cards.map((c) => [c.nickname, c.holder, c.number, c.expMonth, c.expYear, c.code, c.note]),
+      ["number", "exp_month", "exp_year", "security_code"]
+    );
+  }
+  function addressesToCsv(addresses) {
+    return toCsv(
+      ["name", "company", "street", "city", "state", "postal_code", "country", "phone", "email"],
+      addresses.map((a) => [a.name, a.company, a.street, a.city, a.state, a.postal, a.country, a.phone, a.email]),
+      ["phone"]
+    );
+  }
+  function notesToCsv(notes) {
+    return toCsv(["title", "details"], notes.map((n) => [n.title, n.body]));
+  }
+
+  // web/src/lib/formats.ts
+  var FORMATS = [
+    { id: "1password", label: "1Password", fileName: "samsung-pass-1password.csv", hint: "Import this CSV at my.1password.com \u2192 Import \u2192 CSV. One-time codes go in Notes." },
+    { id: "google", label: "Google", fileName: "samsung-pass-google.csv", hint: "Chrome \u2192 Password Manager \u2192 Settings \u2192 Import. One-time codes go in the note." },
+    { id: "apple", label: "Apple", fileName: "samsung-pass-apple.csv", hint: "Settings \u2192 Apps \u2192 Passwords \u2192 Import passwords. One-time codes go in OTPAuth." },
+    { id: "bitwarden", label: "Bitwarden", fileName: "samsung-pass-bitwarden.csv", hint: "Import as Bitwarden (csv). Logins and notes are in this file. Cards are separate." }
+  ];
+  var DEFAULT_FORMAT = "1password";
+  function isFormatId(value) {
+    return FORMATS.some((format) => format.id === value);
+  }
+  function fileNameFor(format) {
+    return FORMATS.find((item) => item.id === format).fileName;
+  }
+
+  // web/src/lib/unlock.ts
+  function isPlaintextExport(text) {
+    return looksLikeSpassPlaintext(text);
+  }
+  async function unlockText(fileText, password) {
+    const text = fileText.replace(/^\uFEFF/, "");
+    if (isPlaintextExport(text)) {
+      const vault2 = toVault(parseSpassText(text), true);
+      if (vaultCount(vault2) === 0) throw new SpassError("format", "The file opened, but it has no logins, cards, addresses, or notes.");
+      return vault2;
+    }
+    if (!password) throw new SpassError("empty", "Enter the export password you set in Samsung Pass.");
+    if (!globalThis.crypto?.subtle) throw new SpassError("format", "This browser can't unlock files. Open the page in Chrome.");
+    const plain = await decryptSpass(text, password);
+    const vault = toVault(parseSpassText(plain), false);
+    if (vaultCount(vault) === 0) throw new SpassError("format", "The file unlocked, but it has no logins, cards, addresses, or notes.");
+    return vault;
+  }
+
+  // web/src/ui/dom.ts
+  function el(tag, attrs = {}, children = []) {
+    const node = document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (typeof value === "function") node.addEventListener(key.replace(/^on/, ""), value);
+      else if (key === "class") node.className = String(value);
+      else if (value === true) node.setAttribute(key, "");
+      else if (value !== false) node.setAttribute(key, String(value));
+    }
+    for (const child of children) {
+      if (child === null) continue;
+      node.append(typeof child === "string" ? document.createTextNode(child) : child);
+    }
+    return node;
+  }
+  function icon(name) {
+    return el("span", { class: "icon", "aria-hidden": "true", "data-icon": name }, []);
+  }
+
+  // web/src/ui/platform.ts
+  function bridge() {
+    const candidate = globalThis.passBridge;
+    return candidate && typeof candidate.postMessage === "function" ? candidate : null;
+  }
+  var androidPlatform = (b) => ({
+    save(fileName, csv) {
+      return new Promise((resolve) => {
+        b.onmessage = (event) => {
+          try {
+            const reply = JSON.parse(event.data);
+            if (reply.type === "saved") resolve(reply.ok === true);
+          } catch {
+            resolve(false);
+          }
+        };
+        b.postMessage(JSON.stringify({ type: "save", fileName, csv }));
+      });
+    }
+  });
+  var webPlatform = {
+    async save(fileName, csv) {
+      try {
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.rel = "noopener";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  };
+  function detectPlatform() {
+    const b = bridge();
+    return b ? androidPlatform(b) : webPlatform;
+  }
+
+  // web/src/ui/prefs.ts
+  var FORMAT_KEY = "passtocsv.format";
+  function loadFormat() {
+    try {
+      const stored = globalThis.localStorage?.getItem(FORMAT_KEY);
+      return isFormatId(stored) ? stored : DEFAULT_FORMAT;
+    } catch {
+      return DEFAULT_FORMAT;
+    }
+  }
+  function storeFormat(format) {
+    try {
+      globalThis.localStorage?.setItem(FORMAT_KEY, format);
+    } catch {
+    }
+  }
+
+  // web/src/ui/app.ts
+  function freshState(format) {
+    return {
+      file: null,
+      password: "",
+      showPassword: false,
+      format,
+      status: "form",
+      error: null,
+      vault: null,
+      query: "",
+      revealed: /* @__PURE__ */ new Set(),
+      saved: false,
+      sheet: null,
+      snackbar: "",
+      externalPending: false
+    };
+  }
+  function readFileText(file) {
+    if (typeof file.text === "function") return file.text();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(file);
+    });
+  }
+  function mount(root2, options = {}) {
+    const platform = options.platform ?? detectPlatform();
+    let state = freshState(loadFormat());
+    const wipe = () => {
+      state = freshState(state.format);
+      render();
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden" && !state.externalPending && state.vault) wipe();
+    });
+    const canConvert = () => state.file !== null && state.password.length > 0 && state.status !== "working";
+    async function convert() {
+      if (!state.file) return;
+      state.status = "working";
+      state.error = null;
+      render();
+      try {
+        const text = await readFileText(state.file);
+        state.vault = await unlockText(text, state.password);
+        state.status = "done";
+      } catch (error) {
+        state.status = "form";
+        const err = error instanceof SpassError ? error : new SpassError("format", "Something went wrong reading this file.");
+        state.error = { field: err.code === "format" ? "file" : "password", message: err.message };
+      }
+      render();
+    }
+    function primaryCsv() {
+      const vault = state.vault;
+      return { fileName: fileNameFor(state.format), csv: loginsToCsv(vault.logins, vault.notes, state.format) };
+    }
+    async function confirmSave(fileName, csv) {
+      state.sheet = null;
+      state.externalPending = true;
+      render();
+      const ok = await platform.save(fileName, csv);
+      state.externalPending = false;
+      state.saved = state.saved || ok;
+      state.snackbar = ok ? `Saved ${fileName}. Delete it after you import.` : "Couldn't save the file. Nothing was written.";
+      render();
+    }
+    function topBar() {
+      return el("header", { class: "appbar" }, [
+        icon("lock"),
+        el("h1", { class: "title-large" }, ["Spcc"]),
+        el("button", { class: "icon-btn", type: "button", "aria-label": "About and privacy", onclick: () => {
+          state.sheet = { kind: "about" };
+          render();
+        } }, [icon("more_vert")])
+      ]);
+    }
+    function currentPhase() {
+      if (state.sheet?.kind === "save" || state.saved) return "save";
+      return state.vault ? "unlock" : "file";
+    }
+    function phaseRail() {
+      const phase = currentPhase();
+      const order = ["file", "unlock", "save"];
+      const labels = { file: "1 \xB7 File", unlock: "2 \xB7 Unlock", save: "3 \xB7 Save" };
+      const at = order.indexOf(phase);
+      return el(
+        "ol",
+        { class: "rail", "aria-label": "Progress", "data-testid": "rail" },
+        order.map((p, i) => el("li", {
+          class: i === at ? "pill active" : i < at ? "pill done" : "pill",
+          "data-phase": p,
+          "aria-current": i === at ? "step" : "false"
+        }, [labels[p]]))
+      );
+    }
+    function trustStrip() {
+      return el("p", { class: "trust" }, [icon("lock"), "Stays on this phone \xB7 nothing uploaded"]);
+    }
+    function fieldError(field) {
+      return state.error?.field === field ? el("p", { class: "error", role: "alert" }, [state.error.message]) : null;
+    }
+    function fileCard() {
+      const input = el("input", { type: "file", accept: ".spass,application/octet-stream,text/plain", id: "spass-file", class: "visually-hidden" });
+      input.addEventListener("click", () => {
+        state.externalPending = true;
+      });
+      input.addEventListener("change", () => {
+        state.externalPending = false;
+        state.file = input.files?.[0] ?? null;
+        state.error = null;
+        render();
+      });
+      return el("section", { class: "card" }, [
+        el("h2", { class: "label-large" }, ["Export file"]),
+        input,
+        el("label", { for: "spass-file", class: "btn outline" }, [icon("folder"), state.file ? "Change file" : "Choose .spass file"]),
+        state.file ? el("p", { class: "filename", "data-testid": "filename" }, [state.file.name]) : null,
+        fieldError("file")
+      ]);
+    }
+    function passwordCard() {
+      const input = el("input", {
+        type: state.showPassword ? "text" : "password",
+        id: "spass-password",
+        autocomplete: "off",
+        spellcheck: "false",
+        "aria-describedby": "pw-help"
+      });
+      input.value = state.password;
+      input.addEventListener("input", () => {
+        state.password = input.value;
+        const btn = root2.querySelector("[data-testid=convert]");
+        if (btn) btn.disabled = !canConvert();
+      });
+      return el("section", { class: "card" }, [
+        el("label", { for: "spass-password", class: "label-large" }, ["Export password"]),
+        el("div", { class: "field-row" }, [
+          input,
+          el("button", { type: "button", class: "icon-btn", "aria-label": state.showPassword ? "Hide password" : "Show password", onclick: () => {
+            state.showPassword = !state.showPassword;
+            render();
+          } }, [icon(state.showPassword ? "visibility_off" : "visibility")])
+        ]),
+        el("p", { id: "pw-help", class: "helper" }, ["The password you set when exporting \u2014 not your Samsung account password."]),
+        fieldError("password")
+      ]);
+    }
+    function formatCard() {
+      const hint = FORMATS.find((f) => f.id === state.format).hint;
+      return el("section", { class: "card" }, [
+        el("h2", { class: "label-large" }, ["Save as"]),
+        el(
+          "div",
+          { class: "chips", role: "radiogroup", "aria-label": "Password manager" },
+          FORMATS.map((f) => el("button", {
+            type: "button",
+            role: "radio",
+            class: f.id === state.format ? "chip selected" : "chip",
+            "aria-checked": f.id === state.format ? "true" : "false",
+            "data-format": f.id,
+            onclick: () => {
+              state.format = f.id;
+              storeFormat(f.id);
+              render();
+            }
+          }, [f.label]))
+        ),
+        el("p", { class: "helper" }, [hint])
+      ]);
+    }
+    function countsRow(vault) {
+      const item = (n, label) => el("div", { class: "count" }, [el("strong", {}, [String(n)]), el("span", {}, [label])]);
+      return el("section", { class: "counts", "data-testid": "counts" }, [
+        item(vault.logins.length, "logins"),
+        item(vault.cards.length, "cards"),
+        item(vault.addresses.length, "addresses"),
+        item(vault.notes.length, "notes")
+      ]);
+    }
+    function loginRow(login) {
+      const shown = state.revealed.has(login.id);
+      const site = login.needsSite ? (() => {
+        const input = el("input", { type: "url", class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${login.name}` });
+        input.addEventListener("change", () => {
+          setManualSite(login, input.value);
+          render();
+        });
+        return el("div", {}, [input, el("p", { class: "helper" }, ["No website in the export. Left blank unless you type one."])]);
+      })() : el("p", { class: "site" }, [login.url]);
+      return el("li", { class: "login", "data-testid": "login" }, [
+        el("div", { class: "login-head" }, [
+          el("strong", {}, [login.name]),
+          el("button", { type: "button", class: "icon-btn", "aria-label": shown ? "Hide password" : "Show password", onclick: () => {
+            shown ? state.revealed.delete(login.id) : state.revealed.add(login.id);
+            render();
+          } }, [icon(shown ? "visibility_off" : "visibility")])
+        ]),
+        el("p", { class: "muted" }, [login.username]),
+        el("p", { class: "mono" }, [shown ? login.password : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"]),
+        site
+      ]);
+    }
+    function results(vault) {
+      const q = state.query.trim().toLowerCase();
+      const list = el(
+        "ul",
+        { class: "list", "data-testid": "login-list" },
+        vault.logins.filter((l) => !q || `${l.name} ${l.username} ${l.url}`.toLowerCase().includes(q)).map(loginRow)
+      );
+      const search = el("input", { type: "search", class: "search", placeholder: "Search logins", "aria-label": "Search logins" });
+      search.value = state.query;
+      search.addEventListener("input", () => {
+        state.query = search.value;
+        const next = results(vault).querySelector("[data-testid=login-list]");
+        root2.querySelector("[data-testid=login-list]")?.replaceWith(next);
+      });
+      const extras = [];
+      const extra = (label, fileName, csv) => el("button", { type: "button", class: "btn outline", onclick: () => {
+        state.sheet = { kind: "save", fileName, csv };
+        render();
+      } }, [icon("download"), label]);
+      if (vault.cards.length) extras.push(extra("Save cards", "samsung-pass-cards.csv", cardsToCsv(vault.cards)));
+      if (vault.addresses.length) extras.push(extra("Save addresses", "samsung-pass-addresses.csv", addressesToCsv(vault.addresses)));
+      if (vault.notes.length && state.format !== "bitwarden") extras.push(extra("Save notes", "samsung-pass-notes.csv", notesToCsv(vault.notes)));
+      return el("div", { class: "results" }, [
+        countsRow(vault),
+        search,
+        list,
+        extras.length ? el("div", { class: "extras" }, extras) : null,
+        state.saved ? el("p", { class: "reminder", role: "status" }, [icon("delete"), "Delete the CSV after you import it. It holds your passwords in plain text."]) : null
+      ]);
+    }
+    function stickyBar() {
+      return el("footer", { class: "sticky" }, [
+        el("button", { type: "button", class: "btn outline", "data-testid": "clear", onclick: () => {
+          state.sheet = { kind: "clear" };
+          render();
+        } }, [icon("delete"), "Clear"]),
+        el("button", { type: "button", class: "btn filled", "data-testid": "save", onclick: () => {
+          state.sheet = { kind: "save", ...primaryCsv() };
+          render();
+        } }, [icon("download"), "Save CSV"])
+      ]);
+    }
+    function sheet() {
+      const s = state.sheet;
+      if (!s) return null;
+      const close = () => {
+        state.sheet = null;
+        render();
+      };
+      let body;
+      if (s.kind === "save") {
+        body = [
+          el("h2", { class: "title-large" }, ["Save plaintext CSV?"]),
+          el("p", {}, [`${s.fileName} will contain your passwords in plain text. Anyone with the file can read them.`]),
+          el("p", { class: "strong" }, ["Import it into your password manager, then delete it."]),
+          el("div", { class: "sheet-actions" }, [
+            el("button", { type: "button", class: "btn outline", onclick: close }, ["Cancel"]),
+            el("button", { type: "button", class: "btn filled", "data-testid": "confirm-save", onclick: () => void confirmSave(s.fileName, s.csv) }, ["Save"])
+          ])
+        ];
+      } else if (s.kind === "clear") {
+        body = [
+          el("h2", { class: "title-large" }, ["Clear everything?"]),
+          el("p", {}, ["Removes the unlocked data, the chosen file, and the password from this screen."]),
+          el("div", { class: "sheet-actions" }, [
+            el("button", { type: "button", class: "btn outline", onclick: close }, ["Cancel"]),
+            el("button", { type: "button", class: "btn danger", "data-testid": "confirm-clear", onclick: wipe }, ["Clear"])
+          ])
+        ];
+      } else {
+        body = [
+          el("h2", { class: "title-large" }, ["About & privacy"]),
+          el("p", {}, ["Spcc (Spass to CSV Converter) converts a Samsung Pass .spass export on this device. Nothing is uploaded. No accounts, analytics, or telemetry. The app never updates itself \u2014 get updates from Google Play or GitHub Releases."]),
+          el("p", { class: "muted" }, ["Not affiliated with Samsung."]),
+          el("div", { class: "sheet-actions" }, [el("button", { type: "button", class: "btn filled", onclick: close }, ["Done"])])
+        ];
+      }
+      return el("div", { class: "scrim", onclick: (e) => {
+        if (e.target === e.currentTarget) close();
+      } }, [
+        el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "data-testid": `sheet-${s.kind}` }, body)
+      ]);
+    }
+    function render() {
+      const vault = state.vault;
+      const convertBtn = el(
+        "button",
+        { type: "button", class: "btn filled wide", "data-testid": "convert", onclick: () => void convert() },
+        [state.status === "working" ? "Unlocking\u2026" : "Convert"]
+      );
+      convertBtn.disabled = !canConvert();
+      root2.replaceChildren(
+        el("div", { class: "shell" }, [
+          topBar(),
+          phaseRail(),
+          trustStrip(),
+          fileCard(),
+          passwordCard(),
+          formatCard(),
+          vault ? null : convertBtn,
+          vault ? results(vault) : null
+        ]),
+        vault ? stickyBar() : el("span"),
+        sheet() ?? el("span"),
+        state.snackbar ? el("div", { class: "snackbar", role: "status", "data-testid": "snackbar" }, [state.snackbar]) : el("span")
+      );
+      if (state.snackbar) {
+        const text = state.snackbar;
+        setTimeout(() => {
+          if (state.snackbar === text) {
+            state.snackbar = "";
+            render();
+          }
+        }, 4e3);
+      }
+    }
+    render();
+    return { wipe };
+  }
+
+  // web/src/main.ts
+  var root = document.getElementById("app");
+  if (root) mount(root);
+})();
 </script>
   </body>
 </html>
