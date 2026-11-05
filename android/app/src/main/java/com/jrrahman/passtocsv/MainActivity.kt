@@ -110,10 +110,12 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
-                // HTML accept=".spass"; still open broadly then reject non-.spass by display name.
+                // .spass has no registered MIME; providers report it as octet-stream. Filtering to
+                // binary MIME types hides images/PDFs/docs; isSpassUri still hard-rejects by name.
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "*/*"
+                    type = "application/octet-stream"
+                    putExtra(Intent.EXTRA_MIME_TYPES, SPASS_MIME_TYPES)
                 }
                 pickFile.launch(intent)
                 return true
@@ -204,6 +206,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val ASSET_HOST = "appassets.androidplatform.net"
         const val ASSET_ORIGIN = "https://appassets.androidplatform.net"
+        private val SPASS_MIME_TYPES = arrayOf("application/octet-stream", "application/x-spass", "application/spass")
         private val SAFE_NAME = Regex("^samsung-pass-[a-z0-9-]+\\.csv$")
     }
 }

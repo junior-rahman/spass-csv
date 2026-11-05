@@ -33,16 +33,16 @@ describe("cell", () => {
 describe("golden login CSVs", () => {
   it("1Password", () => {
     expect(loginsToCsv(vault().logins, vault().notes, "1password")).toBe(
-      `${BOM}Title,Website,Username,Password,Notes\r\n` +
-        `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,"Fake entry for the preview\nOTP: ${MAIL_OTP}"\r\n` +
-        `Sample Bank,https://chase.com,j.lee,not-a-real-password,\r\n` +
-        `Chase Bank Card,,lee,=x-pass,${EVIL}\r\n`
+      `Title,Website,Username,Password,Notes,OTPAuth\r\n` +
+        `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,Fake entry for the preview,${MAIL_OTP}\r\n` +
+        `Sample Bank,https://chase.com,j.lee,not-a-real-password,,\r\n` +
+        `Chase Bank Card,,lee,=x-pass,${EVIL},\r\n`
     );
   });
 
   it("Google", () => {
     expect(loginsToCsv(vault().logins, vault().notes, "google")).toBe(
-      `${BOM}name,url,username,password,note\r\n` +
+      `name,url,username,password,note\r\n` +
         `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,"Fake entry for the preview\nOTP: ${MAIL_OTP}"\r\n` +
         `Sample Bank,https://chase.com,j.lee,not-a-real-password,\r\n` +
         `Chase Bank Card,${PLACEHOLDER_URL},lee,=x-pass,${EVIL}\r\n`
@@ -51,7 +51,7 @@ describe("golden login CSVs", () => {
 
   it("Apple", () => {
     expect(loginsToCsv(vault().logins, vault().notes, "apple")).toBe(
-      `${BOM}Title,URL,Username,Password,Notes,OTPAuth\r\n` +
+      `Title,URL,Username,Password,Notes,OTPAuth\r\n` +
         `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,Fake entry for the preview,${MAIL_OTP}\r\n` +
         `Sample Bank,https://chase.com,j.lee,not-a-real-password,,\r\n` +
         `Chase Bank Card,,lee,=x-pass,${EVIL},\r\n`
@@ -60,7 +60,7 @@ describe("golden login CSVs", () => {
 
   it("Bitwarden", () => {
     expect(loginsToCsv(vault().logins, vault().notes, "bitwarden")).toBe(
-      `${BOM}folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp\r\n` +
+      `folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp\r\n` +
         `,0,login,Sample Mail,Fake entry for the preview,,0,https://mail.example.test,ada@example.test,sample-mailbox-pass,${MAIL_OTP}\r\n` +
         `,0,login,Sample Bank,,,0,https://chase.com,j.lee,not-a-real-password,\r\n` +
         `,0,login,Chase Bank Card,${EVIL},,0,,lee,=x-pass,\r\n` +
@@ -90,11 +90,18 @@ describe("formats", () => {
   });
 });
 
+describe("password-manager CSVs start with the header (no BOM)", () => {
+  it.each(["1password", "google", "apple", "bitwarden"])("%s", (fmt) => {
+    const out = loginsToCsv(vault().logins, vault().notes, fmt as never);
+    expect(out.charCodeAt(0)).not.toBe(0xfeff);
+  });
+});
+
 describe("import-safe labels", () => {
   const blank = (over: Partial<Login> = {}): Login =>
     ({ ...vault().logins[0], name: "", url: "", username: "", password: "", note: "", otp: "", otpUri: "", appLabel: "", needsSite: false, ...over });
   const HEADERS: Record<string, string> = {
-    "1password": "Title,Website,Username,Password,Notes",
+    "1password": "Title,Website,Username,Password,Notes,OTPAuth",
     google: "name,url,username,password,note",
     apple: "Title,URL,Username,Password,Notes,OTPAuth",
     bitwarden: "folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp"

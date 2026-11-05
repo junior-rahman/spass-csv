@@ -12,11 +12,11 @@ export function cell(value: string, formulaSafe = true): string {
 }
 
 /** rawColumns: header names written verbatim (passwords, TOTP secrets, card numbers/codes). */
-export function toCsv(headers: string[], rows: string[][], rawColumns: string[] = []): string {
+export function toCsv(headers: string[], rows: string[][], rawColumns: string[] = [], bom = true): string {
   const raw = headers.map((header) => rawColumns.includes(header));
   const head = headers.map((header) => cell(header, false)).join(",");
   const body = rows.map((row) => headers.map((_, i) => cell(row[i] ?? "", !raw[i])).join(","));
-  return `\uFEFF${[head, ...body].join("\r\n")}\r\n`;
+  return `${bom ? "\uFEFF" : ""}${[head, ...body].join("\r\n")}\r\n`;
 }
 
 export function noteWithOtp(note: string, otp: string): string {
@@ -29,16 +29,18 @@ export function noteWithOtp(note: string, otp: string): string {
 export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): string {
   if (format === "1password") {
     return toCsv(
-      ["Title", "Website", "Username", "Password", "Notes"],
-      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otp)]),
-      ["Password"]
+      ["Title", "Website", "Username", "Password", "Notes", "OTPAuth"],
+      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
+      ["Password", "OTPAuth"],
+      false
     );
   }
   if (format === "apple") {
     return toCsv(
       ["Title", "URL", "Username", "Password", "Notes", "OTPAuth"],
       logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
-      ["Password", "OTPAuth"]
+      ["Password", "OTPAuth"],
+      false
     );
   }
   if (format === "bitwarden") {
@@ -50,12 +52,13 @@ export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): s
       "", "0", "login", displayTitle(l), l.note, "", "0", csvUrl(l, format), csvUsername(l), l.password, l.otpUri || l.otp
     ]);
     const noteRows = notes.map((n) => ["", "0", "note", n.title.trim() || "Note", n.body, "", "0", "", "", "", ""]);
-    return toCsv(headers, [...loginRows, ...noteRows], ["login_password", "login_totp"]);
+    return toCsv(headers, [...loginRows, ...noteRows], ["login_password", "login_totp"], false);
   }
   return toCsv(
     ["name", "url", "username", "password", "note"],
     logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otp)]),
-    ["password"]
+    ["password"],
+    false
   );
 }
 
