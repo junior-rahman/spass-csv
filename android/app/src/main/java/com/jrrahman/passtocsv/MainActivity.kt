@@ -112,9 +112,8 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
-                // SAF can only filter by MIME, never by extension. .spass is served as
-                // application/octet-stream, so requesting ONLY that type hides images/PDFs/docs/media;
-                // other unknown binaries may still show and are rejected by isSpassUri after picking.
+                // Restored 2.0.2 (abbfbc9) .spass MIME filter: octet-stream + application/x-spass +
+                // application/spass. isSpassUri still rejects anything not named .spass.
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
                     type = "application/octet-stream"
@@ -213,7 +212,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val ASSET_HOST = "appassets.androidplatform.net"
         const val ASSET_ORIGIN = "https://appassets.androidplatform.net"
-        private val SPASS_MIME_TYPES = arrayOf("application/octet-stream")
+        private val SPASS_MIME_TYPES = arrayOf("application/octet-stream", "application/x-spass", "application/spass")
         private val DOWNLOADS_URI: Uri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download")
         private val SAFE_NAME = Regex("^samsung-pass-[a-z0-9-]+\\.csv$")
     }
