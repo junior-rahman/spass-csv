@@ -56,7 +56,7 @@ Apply one consistent sheet contract to destination, incomplete, plaintext, guide
 - Quiet the phase rail into soft text steps rather than heavy pills; active/progress meaning must not rely on color alone.
 - Remove dead `.chips` CSS; chips are not the destination-selection model.
 - Soften the sheet handle without weakening dialog affordances.
-- Keep the privacy strip's lock metaphor, drawn in Grove line weight rather than a stock filled lock. The privacy lock is not a replacement for the P-ring brand mark.
+- **Remove the home privacy / “stays on this phone” trust strip.** Do not show a persistent on-device upload warning on setup/home. Privacy facts stay in About only (and post-Save CSV plain-text guidance). Do not replace the strip with another banner.
 - Retain dark glass/glow as an approved brand extension, documented in `docs/brand/pass-to-csv-brand.md`; it must not introduce a separate theme or compromise contrast.
 - Rewrite About into short sections: **What Spcc does · Privacy · Updates · License**. Keep factual existing privacy/update/license information, remove wall-of-text presentation, and do not invent legal or publishing claims.
 
