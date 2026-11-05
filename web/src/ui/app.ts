@@ -5,7 +5,11 @@ import {
   applyPlaceholders,
   cardsToCsv,
   fileNameFor,
+  GAP_LABEL,
+  PLACEHOLDER_TITLE,
   incompleteLogins,
+  loginGaps,
+  resolvedTitle,
   loginsToCsv,
   notesToCsv,
   setManualSite,
@@ -22,7 +26,7 @@ type Status = "form" | "working" | "done";
 type Sheet =
   | null
   | { kind: "save"; fileName: string; csv: string }
-  | { kind: "incomplete"; count: number }
+  | { kind: "incomplete"; items: { title: string; gaps: string[] }[] }
   | { kind: "clear" }
   | { kind: "about" };
 
@@ -41,6 +45,7 @@ interface State {
   snackbar: string;
   /** True while a system picker is open, so visibilitychange does not wipe mid-flow. */
   externalPending: boolean;
+  siteDrafts: Map<string, string>;
 }
 
 export interface MountOptions {
@@ -65,7 +70,8 @@ function freshState(format: FormatId): State {
     saved: false,
     sheet: null,
     snackbar: "",
-    externalPending: false
+    externalPending: false,
+    siteDrafts: new Map()
   };
 }
 
@@ -127,10 +133,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   function beginPrimarySave() {
     const vault = state.vault;
-    if (!vault) return;
+    if (!vault || state.externalPending) return;
     const incomplete = incompleteLogins(vault.logins, state.format);
     if (incomplete.length) {
-      state.sheet = { kind: "incomplete", count: incomplete.length };
+      state.sheet = {
+        kind: "incomplete",
+        items: incomplete.map((l) => ({ title: resolvedTitle(l) || PLACEHOLDER_TITLE, gaps: loginGaps(l, state.format).map((g) => GAP_LABEL[g]) }))
+      };
       render();
       return;
     }
@@ -153,6 +162,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   }
 
   async function confirmSave(fileName: string, csv: string) {
+    if (state.externalPending) return;
     state.sheet = null;
     state.externalPending = true;
     render();
@@ -204,7 +214,12 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   function fileCard(): HTMLElement {
     const input = el("input", { type: "file", accept: ".spass", id: "spass-file", class: "visually-hidden" }) as HTMLInputElement;
-    input.addEventListener("click", () => { state.externalPending = true; });
+    input.addEventListener("click", () => {
+      state.externalPending = true;
+      // Picker cancel fires no change event on some WebViews; clear pending once focus returns.
+      window.addEventListener("focus", () => setTimeout(() => { state.externalPending = false; }, 1000), { once: true });
+    });
+    input.addEventListener("cancel", () => { state.externalPending = false; });
     input.addEventListener("change", () => {
       state.externalPending = false;
       const picked = input.files?.[0] ?? null;
@@ -298,6 +313,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
           state.status = "form";
           state.saved = false;
           state.revealed = new Set();
+          state.siteDrafts = new Map();
           state.query = "";
           state.error = null;
           render();
@@ -321,8 +337,14 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const title = login.name.trim() || login.appLabel.trim() || login.username.trim() || "no title";
     const site = login.needsSite
       ? (() => {
-          const input = el("input", { type: "url", class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${title}` }) as HTMLInputElement;
-          input.addEventListener("change", () => { setManualSite(login, input.value); render(); });
+          const input = el("input", { type: "url", id: `site-${login.id}`, class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${title}` }) as HTMLInputElement;
+          input.value = state.siteDrafts.get(login.id) ?? "";
+          input.addEventListener("input", () => { state.siteDrafts.set(login.id, input.value); });
+          input.addEventListener("change", () => {
+            setManualSite(login, input.value);
+            if (!login.needsSite) state.siteDrafts.delete(login.id);
+            render();
+          });
           return el("div", {}, [input, el("p", { class: "helper" }, ["No website in the export. Left blank unless you type one."])]);
         })()
       : login.url ? el("p", { class: "site" }, [login.url]) : null;
@@ -376,13 +398,19 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const close = () => { state.sheet = null; render(); };
     let body: (HTMLElement | null)[];
     if (s.kind === "incomplete") {
-      const n = s.count;
+      const n = s.items.length;
       const noun = n === 1 ? "login" : "logins";
+      const CAP = 50;
+      const list = el("ul", { class: "gap-list", "data-testid": "incomplete-list" },
+        s.items.slice(0, CAP).map((it) => el("li", {}, [el("span", { class: "strong" }, [it.title]), el("span", { class: "muted" }, [` — no ${it.gaps.join(", no ")}`])])));
+      const more = n > CAP ? el("p", { class: "muted" }, [`…and ${n - CAP} more`]) : null;
       body = [
         el("h2", { class: "title-large" }, ["Incomplete logins"]),
         el("p", {}, [
-          `${n} ${noun} are missing a title, username, or website required for ${FORMATS.find((f) => f.id === state.format)!.label}.`
+          `${n} ${noun} ${n === 1 ? "is" : "are"} missing a title, username, or website for ${FORMATS.find((f) => f.id === state.format)!.label}:`
         ]),
+        list,
+        more,
         el("p", {}, ["Delete them, or keep them with clear placeholders (no title / no username / no url). Passwords stay empty when missing."]),
         el("div", { class: "sheet-actions stack" }, [
           el("button", { type: "button", class: "btn danger", "data-testid": "incomplete-delete", onclick: deleteIncomplete }, [`Delete ${n} ${noun}`]),
@@ -423,6 +451,20 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   }
 
   function render() {
+    const active = document.activeElement as HTMLInputElement | null;
+    const focusId = active && root.contains(active) ? active.id : "";
+    const sel = focusId && active && "selectionStart" in active ? [active.selectionStart, active.selectionEnd] : null;
+    paint();
+    if (focusId) {
+      const next = document.getElementById(focusId) as HTMLInputElement | null;
+      if (next) {
+        next.focus();
+        try { if (sel && sel[0] !== null) next.setSelectionRange(sel[0], sel[1]); } catch { /* type without selection */ }
+      }
+    }
+  }
+
+  function paint() {
     const vault = state.vault;
     const convertBtn = el("button", { type: "button", class: "btn filled wide", "data-testid": "convert", onclick: () => void convert() },
       [state.status === "working" ? "Unlocking…" : "Convert"]) as HTMLButtonElement;

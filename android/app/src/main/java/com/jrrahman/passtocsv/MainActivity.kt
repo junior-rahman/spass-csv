@@ -123,7 +123,10 @@ class MainActivity : AppCompatActivity() {
                         putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
                     }
                 }
-                pickFile.launch(intent)
+                if (runCatching { pickFile.launch(intent) }.isFailure) {
+                    fileCallback?.onReceiveValue(null)
+                    fileCallback = null
+                }
                 return true
             }
         }
@@ -134,9 +137,15 @@ class MainActivity : AppCompatActivity() {
                 val json = runCatching { JSONObject(message.data ?: "") }.getOrNull() ?: return@addWebMessageListener
                 if (json.optString("type") != "save") return@addWebMessageListener
                 val name = json.optString("fileName").takeIf { SAFE_NAME.matches(it) } ?: "samsung-pass.csv"
+                // A second save while one is open: fail the older one so its promise settles now.
+                pendingReply?.postMessage(JSONObject().put("type", "saved").put("ok", false).toString())
                 pendingCsv = json.optString("csv")
                 pendingReply = reply
-                createCsv.launch(name)
+                if (runCatching { createCsv.launch(name) }.isFailure) {
+                    pendingCsv = null
+                    pendingReply = null
+                    reply.postMessage(JSONObject().put("type", "saved").put("ok", false).toString())
+                }
             }
         }
 
@@ -148,7 +157,6 @@ class MainActivity : AppCompatActivity() {
             if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
                 when {
                     info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE) -> startUpdate(info, AppUpdateType.FLEXIBLE)
-                    info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) -> startUpdate(info, AppUpdateType.IMMEDIATE)
                 }
             }
         }

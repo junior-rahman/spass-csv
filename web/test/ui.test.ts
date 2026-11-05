@@ -104,6 +104,8 @@ describe("console UI", () => {
     await unlock(root);
     expect(saves).toHaveLength(0);
     q<HTMLButtonElement>(root, "[data-testid=save]").click();
+    expect(saves).toHaveLength(0);
+    q<HTMLButtonElement>(root, "[data-testid=incomplete-keep]").click();
     expect(root.querySelector("[data-testid=sheet-save]")).not.toBeNull();
     expect(saves).toHaveLength(0);
     q<HTMLButtonElement>(root, "[data-testid=confirm-save]").click();
@@ -139,6 +141,16 @@ describe("console UI", () => {
     q<HTMLButtonElement>(root, "[data-testid=confirm-save]").click();
     await vi.waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].csv).not.toContain("no url");
+  });
+
+  it("1Password incomplete sheet lists every login missing a website, with gap labels", async () => {
+    const { root } = setup();
+    await unlock(root);
+    const needs = root.querySelectorAll(".site-input").length;
+    q<HTMLButtonElement>(root, "[data-testid=save]").click();
+    const items = root.querySelectorAll("[data-testid=incomplete-list] li");
+    expect(items.length).toBeGreaterThanOrEqual(needs);
+    expect(root.querySelector("[data-testid=incomplete-list]")!.textContent).toContain("no website");
   });
 
   it("shows a blank website field for unknown apps", async () => {

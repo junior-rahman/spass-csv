@@ -35,7 +35,7 @@ describe("golden login CSVs", () => {
     expect(loginsToCsv(vault().logins, vault().notes, "1password")).toBe(
       `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,"Fake entry for the preview\nOTP: ${MAIL_OTP}"\r\n` +
         `Sample Bank,https://chase.com,j.lee,not-a-real-password,\r\n` +
-        `Chase Bank Card,,lee,=x-pass,${EVIL}\r\n`
+        `Chase Bank Card,${PLACEHOLDER_URL},lee,=x-pass,${EVIL}\r\n`
     );
   });
 
@@ -53,7 +53,7 @@ describe("golden login CSVs", () => {
       `Title,URL,Username,Password,Notes,OTPAuth\r\n` +
         `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,Fake entry for the preview,${MAIL_OTP}\r\n` +
         `Sample Bank,https://chase.com,j.lee,not-a-real-password,,\r\n` +
-        `Chase Bank Card,,lee,=x-pass,${EVIL},\r\n`
+        `Chase Bank Card,${PLACEHOLDER_URL},lee,=x-pass,${EVIL},\r\n`
     );
   });
 
@@ -62,7 +62,7 @@ describe("golden login CSVs", () => {
       `folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp\r\n` +
         `,0,login,Sample Mail,Fake entry for the preview,,0,https://mail.example.test,ada@example.test,sample-mailbox-pass,${MAIL_OTP}\r\n` +
         `,0,login,Sample Bank,,,0,https://chase.com,j.lee,not-a-real-password,\r\n` +
-        `,0,login,Chase Bank Card,${EVIL},,0,,lee,=x-pass,\r\n` +
+        `,0,login,Chase Bank Card,${EVIL},,0,${PLACEHOLDER_URL},lee,=x-pass,\r\n` +
         `,0,note,Router note,"This is sample text, not a real secret.",,0,,,,\r\n`
     );
   });
@@ -81,11 +81,8 @@ describe("formats", () => {
     expect(fileNameFor("apple")).toBe("samsung-pass-apple.csv");
   });
 
-  it("only Google requires a URL placeholder", () => {
-    expect(formatRequiresUrl("google")).toBe(true);
-    expect(formatRequiresUrl("1password")).toBe(false);
-    expect(formatRequiresUrl("apple")).toBe(false);
-    expect(formatRequiresUrl("bitwarden")).toBe(false);
+  it("every format treats a blank website as a gap", () => {
+    for (const f of ["google", "1password", "apple", "bitwarden"] as const) expect(formatRequiresUrl(f)).toBe(true);
   });
 });
 
@@ -127,12 +124,27 @@ describe("import-safe labels", () => {
     expect(out.map((r) => r.split(",")[2])).toEqual([PLACEHOLDER_USERNAME, "bob", PLACEHOLDER_USERNAME]);
   });
 
-  it("Google fills no url when website is blank; others leave URL blank", () => {
+  it("every format fills no url when website is blank", () => {
     const login = blank({ username: "bob" });
     expect(rows("google", [login])[1].split(",")[urlCol.google]).toBe(PLACEHOLDER_URL);
-    expect(rows("1password", [login])[0].split(",")[urlCol["1password"]]).toBe("");
-    expect(rows("apple", [login])[1].split(",")[urlCol.apple]).toBe("");
-    expect(rows("bitwarden", [login])[1].split(",")[urlCol.bitwarden]).toBe("");
+    expect(rows("1password", [login])[0].split(",")[urlCol["1password"]]).toBe(PLACEHOLDER_URL);
+    expect(rows("apple", [login])[1].split(",")[urlCol.apple]).toBe(PLACEHOLDER_URL);
+    expect(rows("bitwarden", [login])[1].split(",")[urlCol.bitwarden]).toBe(PLACEHOLDER_URL);
+  });
+
+  it.each(["1password", "bitwarden", "apple", "google"])("%s: incompleteLogins returns every needsSite login", (fmt) => {
+    const logins = [
+      blank({ id: "a", name: "A", username: "u", needsSite: true }),
+      blank({ id: "b", name: "B", username: "u", needsSite: true, appLabel: "com.x" }),
+      blank({ id: "c", name: "C", username: "u", url: "https://c.test" }),
+      blank({ id: "d", username: "u", url: "" , needsSite: true })
+    ];
+    const inc = incompleteLogins(logins, fmt as never);
+    expect(inc.map((l) => l.id)).toEqual(["a", "b", "d"]);
+    expect(loginGaps(logins[0], fmt as never)).toEqual(["url"]);
+    for (const l of logins.filter((x) => x.needsSite)) expect(inc).toContain(l);
+    for (const l of inc) applyPlaceholders(l, fmt as never);
+    expect(incompleteLogins(logins, fmt as never)).toHaveLength(0);
   });
 
   it("never invents a password placeholder", () => {

@@ -18,8 +18,8 @@ android {
         applicationId = "com.jrrahman.passtocsv"
         minSdk = 29
         targetSdk = 34
-        versionCode = 22
-        versionName = "2.0.4"
+        versionCode = 23
+        versionName = "2.0.5"
     }
 
     signingConfigs {

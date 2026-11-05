@@ -490,8 +490,8 @@
   var PLACEHOLDER_TITLE = "no title";
   var PLACEHOLDER_USERNAME = "no username";
   var PLACEHOLDER_URL = "no url";
-  function formatRequiresUrl(format) {
-    return format === "google";
+  function formatRequiresUrl(_format) {
+    return true;
   }
   function resolvedTitle(login) {
     const name = login.name.trim() || (login.appLabel ?? "").trim();
@@ -513,6 +513,7 @@
     if (formatRequiresUrl(format) && !login.url.trim()) gaps.push("url");
     return gaps;
   }
+  var GAP_LABEL = { title: "title", username: "username", url: "website" };
   function incompleteLogins(logins, format) {
     return logins.filter((login) => loginGaps(login, format).length > 0);
   }
@@ -689,7 +690,10 @@ ${line}` : line;
     visibility: "M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z",
     visibility_off: "M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z",
     download: "M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z",
-    delete: "M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"
+    delete: "M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z",
+    info: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z",
+    check_circle: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z",
+    progress_activity: "M12 4V2C6.48 2 2 6.48 2 12h2c0-4.42 3.58-8 8-8z"
   };
   var ICON_NAMES = Object.keys(ICON_PATHS);
   function icon(name) {
@@ -805,7 +809,8 @@ ${line}` : line;
       saved: false,
       sheet: null,
       snackbar: "",
-      externalPending: false
+      externalPending: false,
+      siteDrafts: /* @__PURE__ */ new Map()
     };
   }
   function readFileText(file) {
@@ -857,10 +862,13 @@ ${line}` : line;
     }
     function beginPrimarySave() {
       const vault = state.vault;
-      if (!vault) return;
+      if (!vault || state.externalPending) return;
       const incomplete = incompleteLogins(vault.logins, state.format);
       if (incomplete.length) {
-        state.sheet = { kind: "incomplete", count: incomplete.length };
+        state.sheet = {
+          kind: "incomplete",
+          items: incomplete.map((l) => ({ title: resolvedTitle(l) || PLACEHOLDER_TITLE, gaps: loginGaps(l, state.format).map((g) => GAP_LABEL[g]) }))
+        };
         render();
         return;
       }
@@ -880,6 +888,7 @@ ${line}` : line;
       openSaveSheet();
     }
     async function confirmSave(fileName, csv) {
+      if (state.externalPending) return;
       state.sheet = null;
       state.externalPending = true;
       render();
@@ -933,6 +942,12 @@ ${line}` : line;
       const input = el("input", { type: "file", accept: ".spass", id: "spass-file", class: "visually-hidden" });
       input.addEventListener("click", () => {
         state.externalPending = true;
+        window.addEventListener("focus", () => setTimeout(() => {
+          state.externalPending = false;
+        }, 1e3), { once: true });
+      });
+      input.addEventListener("cancel", () => {
+        state.externalPending = false;
       });
       input.addEventListener("change", () => {
         state.externalPending = false;
@@ -1038,6 +1053,7 @@ ${line}` : line;
             state.status = "form";
             state.saved = false;
             state.revealed = /* @__PURE__ */ new Set();
+            state.siteDrafts = /* @__PURE__ */ new Map();
             state.query = "";
             state.error = null;
             render();
@@ -1058,9 +1074,14 @@ ${line}` : line;
       const shown = state.revealed.has(login.id);
       const title = login.name.trim() || login.appLabel.trim() || login.username.trim() || "no title";
       const site = login.needsSite ? (() => {
-        const input = el("input", { type: "url", class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${title}` });
+        const input = el("input", { type: "url", id: `site-${login.id}`, class: "site-input", placeholder: "Website (optional)", "aria-label": `Website for ${title}` });
+        input.value = state.siteDrafts.get(login.id) ?? "";
+        input.addEventListener("input", () => {
+          state.siteDrafts.set(login.id, input.value);
+        });
         input.addEventListener("change", () => {
           setManualSite(login, input.value);
+          if (!login.needsSite) state.siteDrafts.delete(login.id);
           render();
         });
         return el("div", {}, [input, el("p", { class: "helper" }, ["No website in the export. Left blank unless you type one."])]);
@@ -1126,13 +1147,22 @@ ${line}` : line;
       };
       let body;
       if (s.kind === "incomplete") {
-        const n = s.count;
+        const n = s.items.length;
         const noun = n === 1 ? "login" : "logins";
+        const CAP = 50;
+        const list = el(
+          "ul",
+          { class: "gap-list", "data-testid": "incomplete-list" },
+          s.items.slice(0, CAP).map((it) => el("li", {}, [el("span", { class: "strong" }, [it.title]), el("span", { class: "muted" }, [` \u2014 no ${it.gaps.join(", no ")}`])]))
+        );
+        const more = n > CAP ? el("p", { class: "muted" }, [`\u2026and ${n - CAP} more`]) : null;
         body = [
           el("h2", { class: "title-large" }, ["Incomplete logins"]),
           el("p", {}, [
-            `${n} ${noun} are missing a title, username, or website required for ${FORMATS.find((f) => f.id === state.format).label}.`
+            `${n} ${noun} ${n === 1 ? "is" : "are"} missing a title, username, or website for ${FORMATS.find((f) => f.id === state.format).label}:`
           ]),
+          list,
+          more,
           el("p", {}, ["Delete them, or keep them with clear placeholders (no title / no username / no url). Passwords stay empty when missing."]),
           el("div", { class: "sheet-actions stack" }, [
             el("button", { type: "button", class: "btn danger", "data-testid": "incomplete-delete", onclick: deleteIncomplete }, [`Delete ${n} ${noun}`]),
@@ -1174,6 +1204,22 @@ ${line}` : line;
       ]);
     }
     function render() {
+      const active = document.activeElement;
+      const focusId = active && root2.contains(active) ? active.id : "";
+      const sel = focusId && active && "selectionStart" in active ? [active.selectionStart, active.selectionEnd] : null;
+      paint();
+      if (focusId) {
+        const next = document.getElementById(focusId);
+        if (next) {
+          next.focus();
+          try {
+            if (sel && sel[0] !== null) next.setSelectionRange(sel[0], sel[1]);
+          } catch {
+          }
+        }
+      }
+    }
+    function paint() {
       const vault = state.vault;
       const convertBtn = el(
         "button",

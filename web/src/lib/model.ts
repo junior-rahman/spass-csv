@@ -138,9 +138,9 @@ export const PLACEHOLDER_TITLE = "no title";
 export const PLACEHOLDER_USERNAME = "no username";
 export const PLACEHOLDER_URL = "no url";
 
-/** True when this CSV format rejects or skips rows with a blank website/URL. */
-export function formatRequiresUrl(format: FormatId): boolean {
-  return format === "google";
+/** Every supported format needs a website; a blank one is a gap (flagged as "add website" in the list). */
+export function formatRequiresUrl(_format: FormatId): boolean {
+  return true;
 }
 
 /** Name → app label → URL host → username. Empty string when none of those exist. Never invents a URL. */
@@ -169,6 +169,8 @@ export function loginGaps(login: Login, format: FormatId): LoginGap[] {
   if (formatRequiresUrl(format) && !login.url.trim()) gaps.push("url");
   return gaps;
 }
+
+export const GAP_LABEL: Record<LoginGap, string> = { title: "title", username: "username", url: "website" };
 
 export function incompleteLogins(logins: Login[], format: FormatId): Login[] {
   return logins.filter((login) => loginGaps(login, format).length > 0);
