@@ -32,7 +32,7 @@ export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): s
     return toCsv(
       // 1Password's official layout: headerless Title,Website,Username,Password,Notes (labelled once in their UI).
       ["Title", "Website", "Username", "Password", "Notes"],
-      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otpUri || l.otp)]),
+      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.note]),
       ["Password"],
       false,
       true

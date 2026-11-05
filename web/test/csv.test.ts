@@ -31,9 +31,18 @@ describe("cell", () => {
 });
 
 describe("golden login CSVs", () => {
+  it("1password: Notes has no OTP line", () => {
+    const out = loginsToCsv(vault().logins, vault().notes, "1password");
+    expect(out).not.toMatch(/OTP:/);
+    expect(out).not.toMatch(/otpauth:/i);
+    const mail = out.trim().split("\r\n")[0];
+    expect(mail).toContain("Fake entry for the preview");
+    expect(mail).not.toContain("OTP:");
+  });
+
   it("1Password", () => {
     expect(loginsToCsv(vault().logins, vault().notes, "1password")).toBe(
-      `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,"Fake entry for the preview\nOTP: ${MAIL_OTP}"\r\n` +
+      `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,Fake entry for the preview\r\n` +
         `Sample Bank,https://chase.com,j.lee,not-a-real-password,\r\n` +
         `Chase Bank Card,,lee,=x-pass,${EVIL}\r\n`
     );
