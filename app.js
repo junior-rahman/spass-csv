@@ -487,6 +487,16 @@
   function vaultCount(vault) {
     return vault.logins.length + vault.cards.length + vault.addresses.length + vault.notes.length;
   }
+  function displayTitle(login) {
+    const name = login.name.trim() || (login.appLabel ?? "").trim();
+    if (name) return name;
+    try {
+      const host = new URL(login.url).hostname.replace(/^www\./, "");
+      if (host) return host;
+    } catch {
+    }
+    return login.username.trim() || "Untitled login";
+  }
 
   // web/src/lib/csv.ts
   var FORMULA_LEAD = /^[=+\-@\t\r]/;
@@ -514,14 +524,14 @@ ${line}` : line;
     if (format === "1password") {
       return toCsv(
         ["Title", "Website", "Username", "Password", "Notes"],
-        logins.map((l) => [l.name || "Login", l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
+        logins.map((l) => [displayTitle(l), l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
         ["Password"]
       );
     }
     if (format === "apple") {
       return toCsv(
         ["Title", "URL", "Username", "Password", "Notes", "OTPAuth"],
-        logins.map((l) => [l.name, l.url, l.username, l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
+        logins.map((l) => [displayTitle(l), l.url, l.username, l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
         ["Password", "OTPAuth"]
       );
     }
@@ -543,7 +553,7 @@ ${line}` : line;
         "",
         "0",
         "login",
-        l.name,
+        displayTitle(l),
         l.note,
         "",
         "0",
@@ -552,12 +562,12 @@ ${line}` : line;
         l.password,
         l.otpUri || l.otp
       ]);
-      const noteRows = notes.map((n) => ["", "0", "note", n.title, n.body, "", "0", "", "", "", ""]);
+      const noteRows = notes.map((n) => ["", "0", "note", n.title.trim() || "Note", n.body, "", "0", "", "", "", ""]);
       return toCsv(headers, [...loginRows, ...noteRows], ["login_password", "login_totp"]);
     }
     return toCsv(
       ["name", "url", "username", "password", "note"],
-      logins.map((l) => [l.name, l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
+      logins.map((l) => [displayTitle(l), l.url, l.username, l.password, noteWithOtp(l.note, l.otp)]),
       ["password"]
     );
   }
