@@ -12,7 +12,7 @@ import {
   type Login,
   type Vault
 } from "../lib";
-import { el, icon } from "./dom";
+import { el, icon, pRingMark } from "./dom";
 import { detectPlatform, type Platform } from "./platform";
 import { loadFormat, storeFormat } from "./prefs";
 
@@ -122,8 +122,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   function topBar(): HTMLElement {
     return el("header", { class: "appbar" }, [
-      icon("lock"),
-      el("h1", { class: "title-large" }, ["Spcc"]),
+      el("div", { class: "lockup", "data-testid": "lockup" }, [
+        pRingMark(48),
+        el("div", { class: "lockup-panel" }, [
+          el("h1", { class: "lockup-title" }, ["Spcc"]),
+          el("p", { class: "lockup-sub" }, ["Spass to CSV Converter"])
+        ])
+      ]),
       el("button", { class: "icon-btn", type: "button", "aria-label": "About and privacy", onclick: () => { state.sheet = { kind: "about" }; render(); } }, [icon("more_vert")])
     ]);
   }
@@ -147,7 +152,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   }
 
   function trustStrip(): HTMLElement {
-    return el("p", { class: "trust" }, [icon("lock"), "Stays on this phone · nothing uploaded"]);
+    return el("p", { class: "trust", role: "note", "data-testid": "trust" }, [icon("lock"), "Stays on this phone · nothing uploaded"]);
   }
 
   function fieldError(field: "file" | "password"): HTMLElement | null {
@@ -311,7 +316,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       ];
     }
     return el("div", { class: "scrim", onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } }, [
-      el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "data-testid": `sheet-${s.kind}` }, body)
+      el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "data-testid": `sheet-${s.kind}` }, [el("div", { class: "handle", "aria-hidden": "true" }), ...body])
     ]);
   }
 

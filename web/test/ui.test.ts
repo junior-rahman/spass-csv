@@ -124,3 +124,20 @@ describe("console UI", () => {
     Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
   });
 });
+
+describe("brand lockup", () => {
+  it("renders the P2 Soft overlap lockup with the P-ring mark", () => {
+    const { root } = setup();
+    const lockup = q(root, ".appbar [data-testid=lockup]");
+    const mark = q(lockup, "[data-mark=p-ring]");
+    expect(mark.getAttribute("aria-label")).toBe("Spcc logo");
+    expect(mark.querySelector("svg rect")?.getAttribute("fill")).toBe("#3F4F3A");
+    expect(q(lockup, ".lockup-title").textContent).toBe("Spcc");
+    expect(q(lockup, ".lockup-sub").textContent).toBe("Spass to CSV Converter");
+    expect(root.querySelector('.appbar [data-icon="lock"]')).toBeNull();
+  });
+  it("renders the trust banner", () => {
+    const { root } = setup();
+    expect(q(root, "[data-testid=trust]").textContent).toContain("nothing uploaded");
+  });
+});
