@@ -109,7 +109,7 @@ describe("console UI", () => {
     q<HTMLButtonElement>(root, "[data-testid=confirm-save]").click();
     await vi.waitFor(() => expect(saves).toHaveLength(1));
     expect(saves[0].fileName).toBe("samsung-pass-1password.csv");
-    expect(saves[0].csv.startsWith("Title,Website,Username,Password,Notes,OTPAuth\r\n")).toBe(true);
+    expect(saves[0].csv.startsWith("Title,")).toBe(false);
     expect(root.querySelector(".reminder")).not.toBeNull();
   });
 

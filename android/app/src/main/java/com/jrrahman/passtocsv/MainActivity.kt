@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
+import android.os.Build
 import android.provider.OpenableColumns
 import android.os.Bundle
 import android.view.WindowManager
@@ -110,12 +112,17 @@ class MainActivity : AppCompatActivity() {
             ): Boolean {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
-                // .spass has no registered MIME; providers report it as octet-stream. Filtering to
-                // binary MIME types hides images/PDFs/docs; isSpassUri still hard-rejects by name.
+                // SAF can only filter by MIME, never by extension. .spass is served as
+                // application/octet-stream, so requesting ONLY that type hides images/PDFs/docs/media;
+                // other unknown binaries may still show and are rejected by isSpassUri after picking.
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
                     type = "application/octet-stream"
                     putExtra(Intent.EXTRA_MIME_TYPES, SPASS_MIME_TYPES)
+                    putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
+                    }
                 }
                 pickFile.launch(intent)
                 return true
@@ -206,7 +213,8 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val ASSET_HOST = "appassets.androidplatform.net"
         const val ASSET_ORIGIN = "https://appassets.androidplatform.net"
-        private val SPASS_MIME_TYPES = arrayOf("application/octet-stream", "application/x-spass", "application/spass")
+        private val SPASS_MIME_TYPES = arrayOf("application/octet-stream")
+        private val DOWNLOADS_URI: Uri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download")
         private val SAFE_NAME = Regex("^samsung-pass-[a-z0-9-]+\\.csv$")
     }
 }

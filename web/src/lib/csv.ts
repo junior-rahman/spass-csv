@@ -12,11 +12,12 @@ export function cell(value: string, formulaSafe = true): string {
 }
 
 /** rawColumns: header names written verbatim (passwords, TOTP secrets, card numbers/codes). */
-export function toCsv(headers: string[], rows: string[][], rawColumns: string[] = [], bom = true): string {
+export function toCsv(headers: string[], rows: string[][], rawColumns: string[] = [], bom = true, omitHeader = false): string {
   const raw = headers.map((header) => rawColumns.includes(header));
   const head = headers.map((header) => cell(header, false)).join(",");
   const body = rows.map((row) => headers.map((_, i) => cell(row[i] ?? "", !raw[i])).join(","));
-  return `${bom ? "\uFEFF" : ""}${[head, ...body].join("\r\n")}\r\n`;
+  const lines = omitHeader ? body : [head, ...body];
+  return lines.length ? `${bom ? "\uFEFF" : ""}${lines.join("\r\n")}\r\n` : "";
 }
 
 export function noteWithOtp(note: string, otp: string): string {
@@ -29,10 +30,12 @@ export function noteWithOtp(note: string, otp: string): string {
 export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): string {
   if (format === "1password") {
     return toCsv(
-      ["Title", "Website", "Username", "Password", "Notes", "OTPAuth"],
-      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
-      ["Password", "OTPAuth"],
-      false
+      // 1Password's official layout: headerless Title,Website,Username,Password,Notes (labelled once in their UI).
+      ["Title", "Website", "Username", "Password", "Notes"],
+      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otpUri || l.otp)]),
+      ["Password"],
+      false,
+      true
     );
   }
   if (format === "apple") {

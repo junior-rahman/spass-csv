@@ -5,7 +5,7 @@ Locked by `web/test/csv.test.ts` (exact header strings + no-BOM test).
 
 | Format | Exact header row | Source |
 |---|---|---|
-| 1Password | `Title,Website,Username,Password,Notes,OTPAuth` | 1Password CSV import (labels case-insensitive; Website/Username/Password are the required labels) |
+| 1Password | *(headerless)* columns `Title,Website,Username,Password,Notes` | 1Password official CSV layout: no header row, no BOM. 1Password.com always shows a Label step — map left→right Title, Website, Username, Password, Notes once. |
 | Google / Chrome | `name,url,username,password,note` | Google Password Manager CSV import |
 | Apple Passwords | `Title,URL,Username,Password,Notes,OTPAuth` | Apple Passwords / Safari CSV export layout |
 | Bitwarden | `folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp` | Bitwarden "Bitwarden (csv)" import |
@@ -17,7 +17,7 @@ Locked by `web/test/csv.test.ts` (exact header strings + no-BOM test).
 - No spaces after commas in headers; CRLF line endings; RFC 4180 quoting.
 - Non-empty: Title never empty (`displayTitle` → site/username/`no title`); Username never empty (`no username`);
   Google URL never empty (`no url`); others leave blank URL. Password never invented. Pre-save warning stays.
-- TOTP: full `otpauth://` URI goes in OTPAuth (1Password, Apple) / login_totp (Bitwarden); otherwise appended to notes.
+- TOTP: full `otpauth://` URI goes in OTPAuth (Apple) / Notes as `OTP: …` (1Password) / login_totp (Bitwarden); otherwise appended to notes.
 - Any header change must update the golden tests in the same commit.
 
 ## .spass picker
@@ -25,3 +25,7 @@ Locked by `web/test/csv.test.ts` (exact header strings + no-BOM test).
 - Android: `ACTION_OPEN_DOCUMENT` filtered to `application/octet-stream` (+ x-spass) via EXTRA_MIME_TYPES, then
   `isSpassUri` hard-rejects anything not named `*.spass`. (Android has no registered .spass MIME, so some
   non-.spass binaries may still appear; they are rejected on pick.)
+
+## Android file picker
+
+Android's Storage Access Framework filters only by MIME type, never by file name/extension. `.spass` has no registered MIME (providers report `application/octet-stream`), so the picker requests octet-stream only (hides images, PDFs, docs, media, text) and opens in Downloads. Other unknown-binary files (.zip, .apk, .bin, etc.) can still appear on stock Android/Samsung; they are rejected after picking. Truly hiding them would need broad `MANAGE_EXTERNAL_STORAGE` + a custom file browser, which we deliberately avoid.

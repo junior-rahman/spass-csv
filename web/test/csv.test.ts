@@ -33,10 +33,9 @@ describe("cell", () => {
 describe("golden login CSVs", () => {
   it("1Password", () => {
     expect(loginsToCsv(vault().logins, vault().notes, "1password")).toBe(
-      `Title,Website,Username,Password,Notes,OTPAuth\r\n` +
-        `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,Fake entry for the preview,${MAIL_OTP}\r\n` +
-        `Sample Bank,https://chase.com,j.lee,not-a-real-password,,\r\n` +
-        `Chase Bank Card,,lee,=x-pass,${EVIL},\r\n`
+      `Sample Mail,https://mail.example.test,ada@example.test,sample-mailbox-pass,"Fake entry for the preview\nOTP: ${MAIL_OTP}"\r\n` +
+        `Sample Bank,https://chase.com,j.lee,not-a-real-password,\r\n` +
+        `Chase Bank Card,,lee,=x-pass,${EVIL}\r\n`
     );
   });
 
@@ -101,7 +100,6 @@ describe("import-safe labels", () => {
   const blank = (over: Partial<Login> = {}): Login =>
     ({ ...vault().logins[0], name: "", url: "", username: "", password: "", note: "", otp: "", otpUri: "", appLabel: "", needsSite: false, ...over });
   const HEADERS: Record<string, string> = {
-    "1password": "Title,Website,Username,Password,Notes,OTPAuth",
     google: "name,url,username,password,note",
     apple: "Title,URL,Username,Password,Notes,OTPAuth",
     bitwarden: "folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp"
@@ -121,10 +119,18 @@ describe("import-safe labels", () => {
     expect(users).toEqual([PLACEHOLDER_USERNAME, "bob", PLACEHOLDER_USERNAME]);
   });
 
+  it("1password: headerless, 5 columns, never empty title/username", () => {
+    const out = rows("1password", [blank({ url: "https://www.github.com/login" }), blank({ username: "bob" }), blank({ password: "p" })]);
+    expect(out).toHaveLength(3);
+    expect(out.map((r) => r.split(",").length)).toEqual([5, 5, 5]);
+    expect(out.map((r) => r.split(",")[0])).toEqual(["github.com", "bob", PLACEHOLDER_TITLE]);
+    expect(out.map((r) => r.split(",")[2])).toEqual([PLACEHOLDER_USERNAME, "bob", PLACEHOLDER_USERNAME]);
+  });
+
   it("Google fills no url when website is blank; others leave URL blank", () => {
     const login = blank({ username: "bob" });
     expect(rows("google", [login])[1].split(",")[urlCol.google]).toBe(PLACEHOLDER_URL);
-    expect(rows("1password", [login])[1].split(",")[urlCol["1password"]]).toBe("");
+    expect(rows("1password", [login])[0].split(",")[urlCol["1password"]]).toBe("");
     expect(rows("apple", [login])[1].split(",")[urlCol.apple]).toBe("");
     expect(rows("bitwarden", [login])[1].split(",")[urlCol.bitwarden]).toBe("");
   });

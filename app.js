@@ -540,12 +540,13 @@
     if (/[",\r\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
     return v;
   }
-  function toCsv(headers, rows, rawColumns = [], bom = true) {
+  function toCsv(headers, rows, rawColumns = [], bom = true, omitHeader = false) {
     const raw = headers.map((header) => rawColumns.includes(header));
     const head = headers.map((header) => cell(header, false)).join(",");
     const body = rows.map((row) => headers.map((_, i) => cell(row[i] ?? "", !raw[i])).join(","));
-    return `${bom ? "\uFEFF" : ""}${[head, ...body].join("\r\n")}\r
-`;
+    const lines = omitHeader ? body : [head, ...body];
+    return lines.length ? `${bom ? "\uFEFF" : ""}${lines.join("\r\n")}\r
+` : "";
   }
   function noteWithOtp(note, otp) {
     if (!otp) return note;
@@ -557,10 +558,12 @@ ${line}` : line;
   function loginsToCsv(logins, notes, format) {
     if (format === "1password") {
       return toCsv(
-        ["Title", "Website", "Username", "Password", "Notes", "OTPAuth"],
-        logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.otpUri ? l.note : noteWithOtp(l.note, l.otp), l.otpUri]),
-        ["Password", "OTPAuth"],
-        false
+        // 1Password's official layout: headerless Title,Website,Username,Password,Notes (labelled once in their UI).
+        ["Title", "Website", "Username", "Password", "Notes"],
+        logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otpUri || l.otp)]),
+        ["Password"],
+        false,
+        true
       );
     }
     if (format === "apple") {
@@ -628,7 +631,7 @@ ${line}` : line;
 
   // web/src/lib/formats.ts
   var FORMATS = [
-    { id: "1password", label: "1Password", fileName: "samsung-pass-1password.csv", hint: "Import this CSV at my.1password.com \u2192 Import \u2192 CSV. One-time codes go in Notes." },
+    { id: "1password", label: "1Password", fileName: "samsung-pass-1password.csv", hint: "Import at my.1password.com \u2192 Import \u2192 CSV. On the Label step pick, left to right: Title, Website, Username, Password, Notes. One-time codes are in Notes." },
     { id: "google", label: "Google", fileName: "samsung-pass-google.csv", hint: "Chrome \u2192 Password Manager \u2192 Settings \u2192 Import. One-time codes go in the note." },
     { id: "apple", label: "Apple", fileName: "samsung-pass-apple.csv", hint: "Settings \u2192 Apps \u2192 Passwords \u2192 Import passwords. One-time codes go in OTPAuth." },
     { id: "bitwarden", label: "Bitwarden", fileName: "samsung-pass-bitwarden.csv", hint: "Import as Bitwarden (csv). Logins and notes are in this file. Cards are separate." }
