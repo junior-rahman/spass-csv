@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PassToCsv" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">#3F4F3A</item>
+        <item name="android:windowBackground">#F7F4EF</item>
+        <item name="android:statusBarColor">#F7F4EF</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
