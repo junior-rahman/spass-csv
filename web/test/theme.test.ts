@@ -1,28 +1,38 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const css = readFileSync("web/src/ui/styles.css", "utf8");
 const template = readFileSync("web/index.template.html", "utf8");
+const build = readFileSync("scripts/build.mjs", "utf8");
 
-describe("dual theme tokens", () => {
-  it("light primary is Grove #3F4F3A", () => {
-    expect(css).toMatch(/--primary:\s*#3F4F3A/);
+describe("Night Grove tokens", () => {
+  it("locks the palette", () => {
+    for (const t of ["--soil: #1C1917", "--olive: #6B8F71", "--grove: #3F4F3A", "--fern: #A3C9A8", "--cream: #F7F4EF", "--mist: #E8EDE6", "--caution: #B54708", "--danger: #FFB4A8"]) expect(css).toContain(t);
   });
 
-  it("dark theme follows the system with glass, glow and gradient CTA", () => {
-    const dark = css.slice(css.indexOf("@media (prefers-color-scheme: dark)"));
-    expect(dark).toMatch(/#1C1917|#0F1410/);
-    expect(dark).toMatch(/--card-blur:\s*blur\(/);
-    expect(dark).toMatch(/--mark-glow:\s*0 0/);
-    expect(dark).toMatch(/--cta:\s*linear-gradient\(135deg, #6B8F71 0%, #3F4F3A 100%\)/);
+  it("primary CTA is Olive, 58px tall, radius 18px, Soil text", () => {
+    const cta = css.match(/\.cta \{[^}]*\}/)![0];
+    expect(cta).toContain("height: 58px");
+    expect(cta).toContain("border-radius: 18px");
+    expect(cta).toContain("background: var(--olive)");
+    expect(cta).toContain("color: var(--soil)");
   });
 
-  it("has no in-app theme toggle", () => {
+  it("bundles Outfit locally and allows only data: fonts", () => {
+    for (const w of ["400", "500", "600"]) expect(existsSync(`web/src/ui/assets/outfit-${w}.ttf`)).toBe(true);
+    expect(css).toMatch(/font-family: Outfit/);
+    expect(css).not.toMatch(/Inter|Roboto/);
+    expect(build).toContain("font-src data:");
+  });
+
+  it("no in-app theme toggle and no cream Soft Grove light theme", () => {
     expect(css).not.toMatch(/\[data-theme/);
+    expect(css).not.toMatch(/prefers-color-scheme: light/);
     expect(readFileSync("web/src/ui/app.ts", "utf8")).not.toMatch(/data-theme|toggleTheme/);
   });
 
-  it("template declares color-scheme and a CSP placeholder", () => {
-    expect(template).toMatch(/name="color-scheme" content="light dark"/);
+  it("template declares dark color-scheme and a CSP placeholder", () => {
+    expect(template).toMatch(/name="color-scheme" content="dark"/);
+    expect(template).toMatch(/name="theme-color" content="#1C1917"/);
     expect(template).toMatch(/Content-Security-Policy" content="%CSP%"/);
   });
 });

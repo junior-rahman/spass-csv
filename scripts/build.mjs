@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname } from "node:path";
 
 const check = process.argv.includes("--check");
-const BASE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'";
+const BASE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'";
 
 const bundle = await build({
   entryPoints: ["web/src/main.ts"],
@@ -17,7 +17,10 @@ const bundle = await build({
   write: false
 });
 const js = `"use strict";\n${bundle.outputFiles[0].text}`;
-const styles = (await transform(readFileSync("web/src/ui/styles.css", "utf8"), { loader: "css", minify: true })).code;
+// Outfit is bundled: inline the local TTFs as data: URIs (CSP allows only font-src data:).
+const css = readFileSync("web/src/ui/styles.css", "utf8").replace(/url\(assets\/(outfit-\d{3}\.ttf)\)/g, (_, name) =>
+  `url(data:font/ttf;base64,${readFileSync(`web/src/ui/assets/${name}`).toString("base64")})`);
+const styles = (await transform(css, { loader: "css", minify: true })).code;
 const template = readFileSync("web/index.template.html", "utf8");
 
 const page = (csp, script) =>
