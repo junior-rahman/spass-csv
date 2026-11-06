@@ -33,7 +33,7 @@ npm ci
 npm test          # vitest: crypto round-trip, parser, golden CSVs, UI
 npm run build     # writes index.html, app.js, samsung-pass-to-csv.html, android/app/src/main/assets/
 npm run check     # fails if generated files drift or Android policy is violated
-gradle -p android assembleRelease   # signed APK; needs JDK 17 + Android SDK 34 and android/keystore.properties
+gradle -p android assembleRelease   # signed APK; needs JDK 17 + Android SDK 36 and android/keystore.properties
 gradle -p android bundleRelease     # signed Play AAB (same signing setup)
 ```
 

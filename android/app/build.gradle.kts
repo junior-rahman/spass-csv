@@ -12,14 +12,14 @@ val keystoreProps = Properties().apply {
 
 android {
     namespace = "com.jrrahman.passtocsv"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.jrrahman.passtocsv"
         minSdk = 29
-        targetSdk = 34
-        versionCode = 32
-        versionName = "2.0.14"
+        targetSdk = 36
+        versionCode = 33
+        versionName = "2.0.15"
         // English-only UI: drop library translations.
         resourceConfigurations += listOf("en")
     }
