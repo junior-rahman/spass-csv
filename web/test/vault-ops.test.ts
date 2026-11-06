@@ -8,20 +8,35 @@ const L = (over: Partial<Login>): Login => ({
 });
 
 describe("siteKey / duplicateGroups", () => {
-  it("normalises amazon.com, www, Amazon and co.uk to one key", () => {
-    expect(siteKey(L({ url: "https://www.amazon.com/login" }))).toBe("amazon");
-    expect(siteKey(L({ name: "Amazon" }))).toBe("amazon");
-    expect(siteKey(L({ name: "amazon.com" }))).toBe("amazon");
-    expect(siteKey(L({ url: "https://www.amazon.co.uk" }))).toBe("amazon");
+  it("uses the full hostname and strips www, not a brand stem or title", () => {
+    expect(siteKey(L({ url: "https://www.amazon.com/login" }))).toBe("amazon.com");
+    expect(siteKey(L({ url: "https://amazon.com" }))).toBe("amazon.com");
+    expect(siteKey(L({ url: "https://mail.google.com" }))).toBe("mail.google.com");
+    expect(siteKey(L({ url: "https://photos.google.com" }))).toBe("photos.google.com");
+    expect(siteKey(L({ url: "https://amazon.co.uk" }))).toBe("amazon.co.uk");
+    expect(siteKey(L({ name: "Amazon" }))).toBe("");
+    expect(siteKey(L({ name: "amazon.com" }))).toBe("");
     expect(siteKey(L({}))).toBe("");
   });
-  it("groups same-site logins only", () => {
-    const a = L({ id: "a", name: "Amazon", url: "https://amazon.com", username: "shop@example.com" });
-    const b = L({ id: "b", name: "amazon.com", url: "https://www.amazon.com" });
-    const n = L({ id: "n", name: "Netflix", url: "https://netflix.com" });
-    const groups = duplicateGroups([a, n, b]);
-    expect(groups.map((g) => g.map((l) => l.id))).toEqual([["a", "b"]]);
-    expect(groupName(groups[0])).toBe("Amazon");
+  it("uses a mapped app package as the website, or the package itself when unmapped", () => {
+    expect(siteKey(L({ appLabel: "com.amazon.mShop.android.shopping" }))).toBe("amazon.com");
+    expect(siteKey(L({ appLabel: "com.unknown.bankapp" }))).toBe("com.unknown.bankapp");
+  });
+  it("groups only the same website or app plus the same username", () => {
+    const amazonA = L({ id: "a", name: "Amazon", url: "https://amazon.com", username: "shop@example.com" });
+    const amazonWww = L({ id: "w", name: "Amazon shopping", url: "https://www.amazon.com", username: "SHOP@example.com" });
+    const amazonApp = L({ id: "p", name: "Amazon", appLabel: "com.amazon.mShop.android.shopping", username: "shop@example.com" });
+    const otherUser = L({ id: "o", url: "https://amazon.com", username: "orders@example.com" });
+    const noUser = L({ id: "e", url: "https://amazon.com", username: "" });
+    const gmail = L({ id: "g", name: "Gmail", url: "https://mail.google.com", username: "shop@example.com" });
+    const photos = L({ id: "ph", name: "Photos", url: "https://photos.google.com", username: "shop@example.com" });
+    const kindle = L({ id: "k", name: "Kindle", url: "https://amazon.com", username: "kindle@example.com" });
+    const netflix = L({ id: "n", name: "Netflix", url: "https://netflix.com", username: "n@x.com", password: "reused" });
+    const other = L({ id: "x", name: "Other", url: "https://other.test", username: "o@x.com", password: "reused" });
+    const groups = duplicateGroups([amazonA, amazonWww, amazonApp, otherUser, noUser, gmail, photos, kindle, netflix, other]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].map((l) => l.id).sort()).toEqual(["a", "p", "w"]);
+    expect(groupName(groups[0])).toBe("amazon.com");
   });
 });
 

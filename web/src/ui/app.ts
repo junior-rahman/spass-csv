@@ -355,7 +355,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const look = needsLook(vault.logins, state.format);
     const lookIds = new Set(look.map((l) => l.id));
     const complete = vault.logins.filter((l) => !lookIds.has(l.id));
-    const group = duplicateGroups(vault.logins)[0];
+    const groups = duplicateGroups(vault.logins);
     const tiles: HTMLElement[] = [];
     const tile = (testid: string, glyph: string, title: string, sub: string, csv: { fileName: string; csv: string } | null) =>
       el(csv ? "button" : "div", {
@@ -383,11 +383,11 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         el("div", { class: "tray-lbl" }, [el("b", { "data-testid": "needs-look-count" }, [`Needs a look · ${look.length}`]), el("span", {}, ["Tap to fix"])]),
         el("ul", { class: "rows" }, look.map((l) => loginRow(l, el("span", { class: "miss" }, [GAP_TAG[lookGaps(l, state.format)[0]]]), "needs-look-item")))
       ]) : null,
-      group ? el("button", { type: "button", class: "merge-banner", "data-testid": "merge-suggestion", onclick: () => openMerge(group) }, [
+      ...groups.map((group) => el("button", { type: "button", class: "merge-banner", "data-testid": "merge-suggestion", onclick: () => openMerge(group) }, [
         el("span", { class: "two", "aria-hidden": "true" }),
         el("span", { class: "t" }, [`${group.length} ${groupName(group)} logins look like`, el("span", {}, ["the same site"])]),
         el("b", {}, ["Merge ›"])
-      ]) : null,
+      ])),
       el("section", { class: "tray", "data-testid": "logins" }, [
         el("div", { class: "tray-lbl" }, [el("b", {}, ["Logins"]), el("span", { "data-testid": "logins-count" }, [`${complete.length} of ${vault.logins.length}`])]),
         complete.length

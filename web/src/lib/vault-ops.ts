@@ -1,7 +1,6 @@
 import { loginGaps, normalizeUserUrl, resolvedTitle, type LoginGap } from "./model";
+import { siteForPackage } from "./sites";
 import type { FormatId, Login } from "./types";
-
-const MULTI_PART_TLD = /^(co|com|org|net|gov|ac|edu)$/;
 
 function hostOf(value: string): string {
   const v = value.trim().toLowerCase();
@@ -15,38 +14,36 @@ function hostOf(value: string): string {
   }
 }
 
-function hostKey(host: string): string {
-  const parts = host.split(".").filter(Boolean);
-  if (parts.length < 2) return parts[0] ?? "";
-  let i = parts.length - 2;
-  if (i > 0 && MULTI_PART_TLD.test(parts[i]) && parts[parts.length - 1].length === 2) i -= 1;
-  return parts[i];
-}
-
-/** Site identity for duplicate detection: amazon.com, www.amazon.com, "Amazon" → "amazon". "" when unknown. */
-export function siteKey(login: Pick<Login, "name" | "url">): string {
+/** Website or app identity: full hostname (www stripped), or a mapped/raw package. Never a title or brand stem. */
+export function siteKey(login: Pick<Login, "url" | "appLabel">): string {
   const fromUrl = hostOf(login.url);
-  if (fromUrl) return hostKey(fromUrl);
-  const fromName = hostOf(login.name);
-  if (fromName) return hostKey(fromName);
-  return login.name.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (fromUrl) return fromUrl;
+  const pkg = login.appLabel.trim();
+  if (!pkg) return "";
+  const mapped = siteForPackage(pkg);
+  return hostOf(mapped) || pkg.toLowerCase();
 }
 
-/** Groups of ≥2 logins that look like the same site, in first-seen order. */
+export function usernameKey(login: Pick<Login, "username">): string {
+  return login.username.trim().toLowerCase();
+}
+
+/** Groups of ≥2 logins that share a website or app AND the same username. Password and title are ignored. */
 export function duplicateGroups(logins: Login[]): Login[][] {
   const map = new Map<string, Login[]>();
   for (const login of logins) {
-    const key = siteKey(login);
-    if (!key) continue;
+    const site = siteKey(login);
+    const user = usernameKey(login);
+    if (!site || !user) continue;
+    const key = `${site}\n${user}`;
     map.set(key, [...(map.get(key) ?? []), login]);
   }
   return [...map.values()].filter((g) => g.length > 1);
 }
 
-/** Display name for a duplicate group: "Amazon". */
+/** Display name for a duplicate group: "amazon.com". */
 export function groupName(group: Login[]): string {
-  const key = siteKey(group[0]);
-  return key ? key.charAt(0).toUpperCase() + key.slice(1) : resolvedTitle(group[0]);
+  return siteKey(group[0]) || resolvedTitle(group[0]);
 }
 
 export const MERGE_FIELDS = ["name", "url", "username", "password", "note"] as const;
