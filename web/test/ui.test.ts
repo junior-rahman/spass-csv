@@ -225,12 +225,39 @@ describe("organize vault", () => {
     expect(saves[0].fileName).toBe("samsung-pass-addresses.csv");
   });
 
-  it("Bitwarden keeps notes in the main file (notes tile is not a separate save)", async () => {
+  it("Bitwarden keeps notes in the main file (no separate notes CSV), but you can still open and delete them", async () => {
     localStorage.setItem(FORMAT_KEY, "bitwarden");
     const { root } = setup();
     await unlock(root);
-    expect(q(root, "[data-testid=tile-notes]").tagName).toBe("DIV");
     expect(q(root, "[data-testid=tile-notes]").textContent).toContain("In Bitwarden file");
+    click(root, "[data-testid=tile-notes]");
+    const extras = q(document.body, "[data-testid=sheet-extras]");
+    expect(extras.textContent).toContain("Router note");
+    expect(extras.querySelector("[data-testid=confirm-save]")).toBeNull();
+  });
+
+  it("lets you delete an address, card, or note with undo", async () => {
+    const { root } = setup();
+    await unlock(root);
+    click(root, "[data-testid=tile-addresses]");
+    click(document.body, "[data-testid=extra-delete]");
+    expect(q(document.body, "[data-testid=snackbar]").textContent).toContain("Deleted Ada Example");
+    expect(root.querySelector("[data-testid=tile-addresses]")).toBeNull();
+    expect(document.querySelector("[data-testid=sheet-extras]")).toBeNull();
+    click(document.body, "[data-testid=undo]");
+    expect(q(root, "[data-testid=tile-addresses]").textContent).toContain("1 Address");
+
+    click(root, "[data-testid=tile-cards]");
+    click(document.body, "[data-testid=extra-delete]");
+    expect(q(document.body, "[data-testid=snackbar]").textContent).toContain("Deleted Sample Visa");
+    expect(root.querySelector("[data-testid=tile-cards]")).toBeNull();
+    click(document.body, "[data-testid=undo]");
+    expect(q(root, "[data-testid=tile-cards]")).not.toBeNull();
+
+    click(root, "[data-testid=tile-notes]");
+    click(document.body, "[data-testid=extra-delete]");
+    expect(q(document.body, "[data-testid=snackbar]").textContent).toContain("Deleted Router note");
+    expect(root.querySelector("[data-testid=tile-notes]")).toBeNull();
   });
 
   it("edit sheet: website focused for the gap, Save changes fixes it and the count drops", async () => {

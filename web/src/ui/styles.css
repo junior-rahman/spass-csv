@@ -164,6 +164,9 @@ li:first-child > .row { border-top: 0; }
 .extra-list li { padding: 12px 0 0; border-top: 1px solid var(--line); }
 .extra-list li:first-child { padding-top: 0; border-top: none; }
 .extra-list b { display: block; font-size: 16px; font-weight: 500; }
+.extra-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.extra-head b { flex: 1; min-width: 0; }
+.danger-btn.extra-del { height: 40px; padding: 0 14px; border-radius: 14px; font-size: 14px; }
 .extra-list p { margin: 4px 0 0; font-size: 14px; color: var(--muted); white-space: pre-wrap; }
 .guide-steps { margin: 14px 0 0; padding-left: 22px; font-size: 14.5px; line-height: 1.5; }
 .guide-steps li { margin-top: 6px; }

@@ -193,6 +193,26 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     render();
   }
 
+  function spliceExtra<T extends { id: string }>(list: T[], id: string, labelOf: (item: T) => string) {
+    const index = list.findIndex((entry) => entry.id === id);
+    if (index < 0) return;
+    const [item] = list.splice(index, 1);
+    if (list.length === 0) state.sheet = null;
+    state.toast = {
+      text: `Deleted ${labelOf(item)}`,
+      undo: () => { list.splice(Math.min(index, list.length), 0, item); }
+    };
+    render();
+  }
+
+  function deleteExtra(which: "cards" | "notes" | "addresses", id: string) {
+    const vault = state.vault;
+    if (!vault) return;
+    if (which === "addresses") spliceExtra(vault.addresses, id, (a) => a.name || a.street || "Address");
+    else if (which === "cards") spliceExtra(vault.cards, id, (c) => c.nickname || "Card");
+    else spliceExtra(vault.notes, id, (n) => n.title.trim() || "Note");
+  }
+
   // ---------- pieces ----------
 
   function aboutButton(): HTMLElement {
@@ -341,7 +361,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     }
     if (vault.notes.length) {
       const inMain = state.format === "bitwarden";
-      tiles.push(tile("tile-notes", "notes", plural(vault.notes.length, "Note"), inMain ? "In Bitwarden file" : vault.notes[0].title, inMain ? null : "notes"));
+      tiles.push(tile("tile-notes", "notes", plural(vault.notes.length, "Note"), inMain ? "In Bitwarden file" : vault.notes[0].title, "notes"));
     }
     if (vault.addresses.length) {
       const a = vault.addresses[0];
@@ -485,7 +505,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   function extrasSheet(s: Extract<Sheet, { kind: "extras" }>, close: () => void): (HTMLElement | null)[] {
     const vault = state.vault!;
-    const items: { heading: string; lines: string[] }[] = [];
+    const items: { id: string; heading: string; lines: string[] }[] = [];
     let title = "";
     let fileName = "";
     let csv = "";
@@ -499,6 +519,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         const city = [a.city, a.state].filter(Boolean).join(", ");
         const locality = [city, a.postal].filter(Boolean).join(" ");
         items.push({
+          id: a.id,
           heading: a.name || a.street || "Address",
           lines: [a.company, a.street, locality, a.country, a.phone, a.email].filter(Boolean)
         });
@@ -512,6 +533,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         const last4 = c.number.replace(/\D/g, "").slice(-4);
         const exp = c.expMonth && c.expYear ? `Expires ${c.expMonth}/${c.expYear}` : "";
         items.push({
+          id: c.id,
           heading: c.nickname || "Card",
           lines: [c.holder, last4 ? `••${last4}` : "", exp].filter(Boolean)
         });
@@ -522,18 +544,26 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       csv = notesToCsv(vault.notes);
       help = "This saves a plain-text CSV of these notes.";
       for (const n of vault.notes) {
-        items.push({ heading: n.title.trim() || "Note", lines: n.body ? [n.body] : [] });
+        items.push({ id: n.id, heading: n.title.trim() || "Note", lines: n.body ? [n.body] : [] });
       }
     }
     return [
       el("h2", { class: "title" }, [title]),
       el("ul", { class: "extra-list", "data-testid": "extras-list" }, items.map((item) =>
-        el("li", {}, [el("b", {}, [item.heading]), ...item.lines.map((line) => el("p", {}, [line]))])
+        el("li", { "data-testid": "extra-item" }, [
+          el("div", { class: "extra-head" }, [
+            el("b", {}, [item.heading]),
+            el("button", { type: "button", class: "danger-btn extra-del", "data-testid": "extra-delete", onclick: () => deleteExtra(s.which, item.id) }, ["Delete"])
+          ]),
+          ...item.lines.map((line) => el("p", {}, [line]))
+        ])
       )),
       el("p", { class: "muted" }, [help]),
       el("div", { class: "acts" }, [
         el("button", { type: "button", class: "ghost", onclick: close }, ["Close"]),
-        el("button", { type: "button", class: "cta", "data-testid": "confirm-save", onclick: () => void confirmSave(fileName, csv, false) }, ["Save CSV"])
+        s.which === "notes" && state.format === "bitwarden"
+          ? null
+          : el("button", { type: "button", class: "cta", "data-testid": "confirm-save", onclick: () => void confirmSave(fileName, csv, false) }, ["Save CSV"])
       ])
     ];
   }
