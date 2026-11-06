@@ -14,7 +14,7 @@ describe("icons render as inline SVG (CSP blocks icon fonts)", () => {
   });
 
   it("every used icon name has a path", () => {
-    for (const name of ["lock", "more_vert", "folder", "visibility", "visibility_off", "download", "delete"]) {
+    for (const name of ["more_vert", "folder", "visibility", "visibility_off", "delete", "close", "chevron_right", "check", "description", "credit_card", "notes", "home"]) {
       expect(ICON_NAMES).toContain(name);
       expect(icon(name).querySelector("svg path")).not.toBeNull();
     }

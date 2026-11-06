@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { webcrypto } from "node:crypto";
+import { encryptSpass } from "../src/lib";
+import { bytesToBase64 } from "../src/lib/bytes";
 import { isSpassFileName, mount } from "../src/ui/app";
 import { FORMAT_KEY } from "../src/ui/prefs";
 import type { Platform } from "../src/ui/platform";
@@ -17,9 +19,29 @@ function setup() {
 }
 
 const q = <T extends Element = HTMLElement>(root: Element, sel: string) => root.querySelector<T>(sel)!;
+const all = (root: Element, sel: string) => [...root.querySelectorAll<HTMLElement>(sel)];
+const click = (root: Element, sel: string) => q<HTMLButtonElement>(root, sel).click();
+const b64 = (v: string) => bytesToBase64(new TextEncoder().encode(v));
 
-async function choose(root: HTMLElement, password: string, fileName = "export.spass") {
-  const file = new File([await sampleSpass()], fileName, { type: "application/octet-stream" });
+/** Synthetic export matching the Night Grove mock: duplicates and gaps. Fake data only. */
+function groveExport(): Promise<string> {
+  const row = (...cells: string[]) => cells.map((c) => (c ? b64(c) : "")).join(";");
+  const plain = [
+    "25", "true;true;true;true", "false", "next_table",
+    "title;host_url;username_value;password_value;credential_memo;otp",
+    row("Bank login", "com.unknown.bankapp", "jsmith", "bank-pass", "", ""),
+    row("amazon.com", "https://www.amazon.com", "", "old-pass", "old note", ""),
+    row("", "", "", "lost-pass", "", ""),
+    row("Netflix", "https://netflix.com", "n@example.com", "nf", "", ""),
+    row("GitHub", "https://github.com", "junior", "gh", "", ""),
+    row("Amazon", "https://amazon.com", "shop@example.com", "new-pass", "", ""),
+    ""
+  ].join("\n");
+  return encryptSpass(plain, TEST_PASSWORD);
+}
+
+async function choose(root: HTMLElement, password: string, fileName = "export.spass", content?: string) {
+  const file = new File([content ?? await sampleSpass()], fileName, { type: "application/octet-stream" });
   const input = q<HTMLInputElement>(root, "#spass-file");
   Object.defineProperty(input, "files", { value: [file], configurable: true });
   input.dispatchEvent(new Event("change"));
@@ -28,160 +50,106 @@ async function choose(root: HTMLElement, password: string, fileName = "export.sp
   pw.dispatchEvent(new Event("input"));
 }
 
-async function unlock(root: HTMLElement) {
-  await choose(root, TEST_PASSWORD);
-  q<HTMLButtonElement>(root, "[data-testid=convert]").click();
-  await vi.waitFor(() => expect(root.querySelector("[data-testid=counts]")).not.toBeNull());
+async function unlock(root: HTMLElement, content?: string) {
+  await choose(root, TEST_PASSWORD, "Pass_20261105.spass", content);
+  click(root, "[data-testid=convert]");
+  await vi.waitFor(() => expect(root.querySelector("[data-testid=vault]")).not.toBeNull());
+}
+
+function expectNoBannedChrome(root: HTMLElement) {
+  for (const sel of ["[data-testid=trust]", "[data-testid=rail]", ".rail", "[data-testid=clear]", "input[type=search]", "[data-testid=incomplete-keep]", ".appbar"]) {
+    expect(root.querySelector(sel)).toBeNull();
+  }
+  expect(document.body.textContent).not.toMatch(/Keep with placeholders|nothing uploaded|Stays on this phone/);
 }
 
 beforeEach(() => localStorage.clear());
 
-describe("console UI", () => {
-  it("defaults to 1Password in the Where are you importing? picker", () => {
+describe("staged flow", () => {
+  it("home shows only the jewel, lockup and Choose .spass file", () => {
     const { root } = setup();
-    const group = q(root, "[role=radiogroup]");
-    expect(group.getAttribute("aria-label")).toBe("Where are you importing?");
-    expect(root.textContent).toContain("Where are you importing?");
-    expect(root.querySelector(".chip")).toBeNull();
-    const opts = [...root.querySelectorAll("[data-format]")];
-    expect(opts.map((c) => c.getAttribute("data-format"))).toEqual(["1password", "google", "apple", "bitwarden"]);
-    expect(q(root, ".dest.selected").getAttribute("data-format")).toBe("1password");
+    expect(root.querySelector("[data-testid=stage-home]")).not.toBeNull();
+    expect(q(root, "[data-testid=choose-file]").textContent).toContain("Choose .spass file");
+    expect(q(root, ".lockup-title").textContent).toBe("Spcc");
+    expect(q(root, ".lockup-sub").textContent).toBe("Spass to CSV Converter");
+    expect(q(root, "[data-testid=rings] [data-mark=p-ring] img").getAttribute("src")).toMatch(/^data:image\/png;base64,/);
+    expect(root.textContent).toContain("Samsung Pass export");
+    expect(root.querySelector("#spass-password")).toBeNull();
+    expect(root.querySelector("[data-format]")).toBeNull();
+    expect(root.querySelector("[data-testid=save]")).toBeNull();
+    expect(root.querySelector("[data-testid=convert]")).toBeNull();
+    expectNoBannedChrome(root);
   });
 
-  it("restores the last-used format", () => {
-    localStorage.setItem(FORMAT_KEY, "apple");
-    const { root } = setup();
-    expect(q(root, ".dest.selected").getAttribute("data-format")).toBe("apple");
-  });
-
-  it("keeps Convert disabled until file and password exist", async () => {
-    const { root } = setup();
-    expect(q<HTMLButtonElement>(root, "[data-testid=convert]").disabled).toBe(true);
-    await choose(root, TEST_PASSWORD);
-    expect(q<HTMLButtonElement>(root, "[data-testid=convert]").disabled).toBe(false);
-  });
-
-  it("file input accepts only .spass and rejects other extensions", async () => {
+  it("file input accepts only .spass and rejects other extensions", () => {
     const { root } = setup();
     const input = q<HTMLInputElement>(root, "#spass-file");
     expect(input.getAttribute("accept")).toBe(".spass");
-    const bad = new File(["nope"], "notes.txt", { type: "text/plain" });
-    Object.defineProperty(input, "files", { value: [bad], configurable: true });
+    Object.defineProperty(input, "files", { value: [new File(["nope"], "notes.txt")], configurable: true });
     input.dispatchEvent(new Event("change"));
-    expect(root.querySelector("[data-testid=filename]")).toBeNull();
+    expect(root.querySelector("#spass-password")).toBeNull();
     expect(q(root, ".error").textContent).toMatch(/\.spass/);
     expect(isSpassFileName("export.spass")).toBe(true);
     expect(isSpassFileName("export.csv")).toBe(false);
   });
 
+  it("password stage: file well, export-password helper, Unlock disabled until typed, no destination yet", async () => {
+    const { root } = setup();
+    await choose(root, "");
+    expect(root.querySelector("[data-testid=stage-password]")).not.toBeNull();
+    expect(q(root, "[data-testid=filename]").textContent).toBe("export.spass");
+    expect(root.textContent).toContain("Enter password");
+    expect(root.textContent).toContain("not your Samsung account password");
+    expect(q(root, "[data-testid=convert]").textContent).toBe("Unlock");
+    expect(q<HTMLButtonElement>(root, "[data-testid=convert]").disabled).toBe(true);
+    expect(root.querySelector("[data-format]")).toBeNull();
+    expect(root.querySelector("[data-testid=save]")).toBeNull();
+    const pw = q<HTMLInputElement>(root, "#spass-password");
+    expect(pw.type).toBe("password");
+    pw.value = "x";
+    pw.dispatchEvent(new Event("input"));
+    expect(q<HTMLButtonElement>(root, "[data-testid=convert]").disabled).toBe(false);
+    expectNoBannedChrome(root);
+  });
+
+  it("password stage Change file goes back to home", async () => {
+    const { root } = setup();
+    await choose(root, "abc");
+    click(root, "[data-testid=change-file]");
+    expect(root.querySelector("[data-testid=stage-home]")).not.toBeNull();
+  });
+
   it("shows a password error for a wrong password", async () => {
     const { root } = setup();
     await choose(root, "nope");
-    q<HTMLButtonElement>(root, "[data-testid=convert]").click();
+    click(root, "[data-testid=convert]");
     await vi.waitFor(() => expect(q(root, ".error").textContent).toMatch(/not your Samsung account password/));
+    expect(root.querySelector("[data-testid=stage-password]")).not.toBeNull();
   });
 
-  it("phase rail moves File → Unlock → Save", async () => {
+  it("shows the ring unlocking stage then lands on the vault (not a destination page)", async () => {
     const { root } = setup();
-    expect(q(root, ".pill.active").getAttribute("data-phase")).toBe("file");
-    await unlock(root);
-    expect(q(root, ".pill.active").getAttribute("data-phase")).toBe("unlock");
-    q<HTMLButtonElement>(root, "[data-testid=save]").click();
-    expect(q(root, ".pill.active").getAttribute("data-phase")).toBe("save");
-  });
-
-  it("after unlock collapses setup into a summary and results pane", async () => {
-    const { root } = setup();
-    await unlock(root);
-    expect(root.querySelector("[data-testid=unlocked-summary]")).not.toBeNull();
-    expect(root.querySelector("[data-testid=results]")).not.toBeNull();
-    expect(root.querySelector("[data-testid=pane]")).not.toBeNull();
+    await choose(root, TEST_PASSWORD);
+    click(root, "[data-testid=convert]");
+    expect(root.querySelector("[data-testid=unlocking]")).not.toBeNull();
+    expect(root.querySelector("[data-testid=unlocking] .arc")).not.toBeNull();
+    expect(root.textContent).toContain("Unlocking…");
+    await vi.waitFor(() => expect(root.querySelector("[data-testid=vault]")).not.toBeNull());
     expect(root.querySelector("#spass-password")).toBeNull();
     expect(root.querySelector("#spass-file")).toBeNull();
-    expect(root.querySelector("[data-testid=convert]")).toBeNull();
-    expect(root.querySelector(".app")).not.toBeNull();
-    expect(root.querySelectorAll(".card.results").length).toBe(1);
+    expect(root.querySelector("[data-format]")).toBeNull();
+    expect(q(root, "[data-testid=destination-chip]").textContent).toContain("Save for 1Password");
+    expect(all(root, "[data-testid=save]")).toHaveLength(1);
+    expect(q(root, "[data-testid=save]").textContent).toBe("Save CSV");
+    expectNoBannedChrome(root);
   });
 
-  it("does not save on unlock and requires the confirm sheet", async () => {
-    const { root, saves } = setup();
-    await unlock(root);
-    expect(saves).toHaveLength(0);
-    q<HTMLButtonElement>(root, "[data-testid=save]").click();
-    expect(saves).toHaveLength(0);
-    q<HTMLButtonElement>(root, "[data-testid=incomplete-keep]").click();
-    expect(root.querySelector("[data-testid=sheet-save]")).not.toBeNull();
-    expect(saves).toHaveLength(0);
-    q<HTMLButtonElement>(root, "[data-testid=confirm-save]").click();
-    await vi.waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].fileName).toBe("samsung-pass-1password.csv");
-    expect(saves[0].csv.startsWith("Title,")).toBe(false);
-    expect(root.querySelector(".reminder")).not.toBeNull();
-    await vi.waitFor(() => expect(root.querySelector("[data-testid=sheet-import-guide]")).not.toBeNull());
-    const guide = q(root, "[data-testid=sheet-import-guide]");
-    expect(guide.textContent).toContain("Import into 1Password");
-    expect(guide.querySelectorAll("ol li").length).toBeGreaterThanOrEqual(3);
-    expect(guide.textContent).toContain("Title, Website, Username, Password, Notes");
-    q<HTMLButtonElement>(root, "[data-testid=guide-done]").click();
-    expect(root.querySelector("[data-testid=sheet-import-guide]")).toBeNull();
-  });
-
-  it("Google save warns about incomplete rows before placeholders", async () => {
-    const { root, saves } = setup();
-    await unlock(root);
-    q<HTMLButtonElement>(root, "[data-testid=change-destination]").click();
-    q<HTMLButtonElement>(root, "[data-format=google]").click();
-    q<HTMLButtonElement>(root, "[data-testid=save]").click();
-    expect(root.querySelector("[data-testid=sheet-incomplete]")).not.toBeNull();
-    expect(saves).toHaveLength(0);
-    q<HTMLButtonElement>(root, "[data-testid=incomplete-keep]").click();
-    expect(root.querySelector("[data-testid=sheet-save]")).not.toBeNull();
-    q<HTMLButtonElement>(root, "[data-testid=confirm-save]").click();
-    await vi.waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].fileName).toBe("samsung-pass-google.csv");
-    expect(saves[0].csv).toContain("no url");
-  });
-
-  it("incomplete delete drops those rows then saves", async () => {
-    const { root, saves } = setup();
-    await unlock(root);
-    const before = root.querySelectorAll("[data-testid=login]").length;
-    q<HTMLButtonElement>(root, "[data-testid=change-destination]").click();
-    q<HTMLButtonElement>(root, "[data-format=google]").click();
-    q<HTMLButtonElement>(root, "[data-testid=save]").click();
-    q<HTMLButtonElement>(root, "[data-testid=incomplete-delete]").click();
-    expect(root.querySelectorAll("[data-testid=login]").length).toBeLessThan(before);
-    q<HTMLButtonElement>(root, "[data-testid=confirm-save]").click();
-    await vi.waitFor(() => expect(saves).toHaveLength(1));
-    expect(saves[0].csv).not.toContain("no url");
-  });
-
-  it("1Password incomplete sheet lists every login missing a website, with gap labels", async () => {
+  it("vault Change file wipes back to choose file", async () => {
     const { root } = setup();
     await unlock(root);
-    const needs = root.querySelectorAll(".site-input").length;
-    q<HTMLButtonElement>(root, "[data-testid=save]").click();
-    const items = root.querySelectorAll("[data-testid=incomplete-list] li");
-    expect(items.length).toBeGreaterThanOrEqual(needs);
-    expect(root.querySelector("[data-testid=incomplete-list]")!.textContent).toContain("no website");
-  });
-
-  it("shows a blank website field for unknown apps", async () => {
-    const { root } = setup();
-    await unlock(root);
-    expect(root.querySelectorAll(".site-input")).toHaveLength(1);
-    expect(root.textContent).not.toMatch(/chasebank\.com/);
-  });
-
-  it("Clear needs confirmation and wipes vault, file and password", async () => {
-    const { root } = setup();
-    await unlock(root);
-    q<HTMLButtonElement>(root, "[data-testid=clear]").click();
-    expect(root.querySelector("[data-testid=counts]")).not.toBeNull();
-    q<HTMLButtonElement>(root, "[data-testid=confirm-clear]").click();
-    expect(root.querySelector("[data-testid=counts]")).toBeNull();
-    expect(root.querySelector("[data-testid=filename]")).toBeNull();
-    expect(q<HTMLInputElement>(root, "#spass-password").value).toBe("");
+    click(root, "[data-testid=change-file]");
+    expect(root.querySelector("[data-testid=stage-home]")).not.toBeNull();
+    expect(root.querySelector("[data-testid=vault]")).toBeNull();
   });
 
   it("wipes the vault when the page is hidden", async () => {
@@ -189,26 +157,195 @@ describe("console UI", () => {
     await unlock(root);
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
-    expect(root.querySelector("[data-testid=counts]")).toBeNull();
+    expect(root.querySelector("[data-testid=vault]")).toBeNull();
     Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+  });
+
+  it("About keeps privacy facts in a sheet", () => {
+    const { root } = setup();
+    click(root, "[data-testid=about]");
+    expect(document.querySelector("[data-testid=sheet-about]")!.textContent).toMatch(/Nothing is uploaded.*Play In-App Updates/s);
   });
 });
 
-describe("brand lockup", () => {
-  it("renders the P2 Soft overlap lockup with the P-ring mark", () => {
+describe("destination chip + sheet", () => {
+  it("opens 2×2 named tiles plus Other, selected tile jeweled; picking updates chip and storage", async () => {
     const { root } = setup();
-    const lockup = q(root, ".appbar [data-testid=lockup]");
-    const mark = q(lockup, "[data-mark=p-ring]");
-    expect(mark.getAttribute("aria-label")).toBe("Spcc logo");
-    const img = mark.querySelector("img");
-    expect(img?.getAttribute("src")).toMatch(/^data:image\/png;base64,/);
-    expect(mark.querySelector("svg")).toBeNull();
-    expect(q(lockup, ".lockup-title").textContent).toBe("Spcc");
-    expect(q(lockup, ".lockup-sub").textContent).toBe("Spass to CSV Converter");
-    expect(root.querySelector('.appbar [data-icon="lock"]')).toBeNull();
+    await unlock(root);
+    click(root, "[data-testid=destination-chip]");
+    const sheet = q(document.body, "[data-testid=sheet-destination]");
+    expect(all(sheet, ".ng-tile").map((t) => t.dataset.format)).toEqual(["1password", "google", "apple", "bitwarden"]);
+    expect(sheet.querySelector(".ng-other[data-format=other]")!.textContent).toContain("passwords.csv");
+    expect(q(sheet, ".ng-tile.sel").dataset.format).toBe("1password");
+    expect(q(sheet, ".ng-tile.sel .ring-field")).not.toBeNull();
+    expect(q(sheet, "[data-testid=counts]").textContent).toMatch(/3Logins.*1Cards.*1Notes.*1Incomplete/);
+    expect(sheet.querySelector("input")).toBeNull();
+    click(sheet, "[data-format=google]");
+    expect(document.querySelector("[data-testid=sheet-destination]")).toBeNull();
+    expect(q(root, "[data-testid=destination-chip]").textContent).toContain("Google Password Manager");
+    expect(localStorage.getItem(FORMAT_KEY)).toBe("google");
   });
-  it("renders the trust banner", () => {
+
+  it("restores the last-used format", async () => {
+    localStorage.setItem(FORMAT_KEY, "apple");
     const { root } = setup();
-    expect(q(root, "[data-testid=trust]").textContent).toContain("nothing uploaded");
+    await unlock(root);
+    expect(q(root, "[data-testid=destination-chip]").textContent).toContain("Apple Passwords");
+  });
+});
+
+describe("organize vault", () => {
+  it("shows Needs a look, merge suggestion, logins complete-of-total, and tiles", async () => {
+    const { root } = setup();
+    await unlock(root, await groveExport());
+    expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 3");
+    const items = all(root, "[data-testid=needs-look-item]").map((r) => r.textContent);
+    expect(items[0]).toMatch(/Bank login.*jsmith.*No website/);
+    expect(items[1]).toMatch(/amazon\.com.*No username/);
+    expect(items[2]).toMatch(/Untitled login.*No title/);
+    expect(q(root, "[data-testid=merge-suggestion]").textContent).toMatch(/2 Amazon logins look like.*the same site.*Merge/);
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("3 of 6");
+    expect(all(root, "[data-testid=login]").map((r) => r.querySelector("b")!.textContent)).toEqual(["Netflix", "GitHub", "Amazon"]);
+  });
+
+  it("sample export folds cards, notes and addresses into tiles that save their CSVs", async () => {
+    const { root, saves } = setup();
+    await unlock(root);
+    expect(q(root, "[data-testid=tile-cards]").textContent).toMatch(/1 Card.*Sample Visa ••4242/);
+    expect(q(root, "[data-testid=tile-notes]").textContent).toContain("1 Note");
+    expect(q(root, "[data-testid=tile-addresses]").textContent).toContain("1 Address");
+    click(root, "[data-testid=tile-addresses]");
+    click(document.body, "[data-testid=confirm-save]");
+    await vi.waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].fileName).toBe("samsung-pass-addresses.csv");
+  });
+
+  it("Bitwarden keeps notes in the main file (notes tile is not a separate save)", async () => {
+    localStorage.setItem(FORMAT_KEY, "bitwarden");
+    const { root } = setup();
+    await unlock(root);
+    expect(q(root, "[data-testid=tile-notes]").tagName).toBe("DIV");
+    expect(q(root, "[data-testid=tile-notes]").textContent).toContain("In Bitwarden file");
+  });
+
+  it("edit sheet: website focused for the gap, Save changes fixes it and the count drops", async () => {
+    const { root } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=needs-look-item]");
+    const sheet = q(document.body, "[data-testid=sheet-edit]");
+    expect(sheet.querySelector("h2")!.textContent).toBe("Bank login");
+    expect(document.activeElement?.id).toBe("edit-url");
+    expect(sheet.textContent).toContain("Add a website so 1Password can match this login.");
+    expect(q<HTMLInputElement>(sheet, "#edit-username").value).toBe("jsmith");
+    expect(q<HTMLInputElement>(sheet, "#edit-password").type).toBe("password");
+    expect(sheet.textContent).not.toMatch(/placeholder/i);
+    const url = q<HTMLInputElement>(sheet, "#edit-url");
+    url.value = "bank.example.com";
+    url.dispatchEvent(new Event("input"));
+    click(sheet, "[data-testid=edit-save]");
+    expect(document.querySelector("[data-testid=sheet-edit]")).toBeNull();
+    expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 2");
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("4 of 6");
+  });
+
+  it("delete is immediate with an Undo snackbar", async () => {
+    const { root } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=needs-look-item]");
+    click(document.body, "[data-testid=edit-delete]");
+    expect(q(document.body, "[data-testid=snackbar]").textContent).toContain("Deleted Bank login");
+    expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 2");
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("3 of 5");
+    click(document.body, "[data-testid=undo]");
+    expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 3");
+    expect(all(root, "[data-testid=needs-look-item]")[0].textContent).toContain("Bank login");
+  });
+
+  it("merge sheet uses real values, lets you pick per field, and leaves one login", async () => {
+    const { root } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=merge-suggestion]");
+    const sheet = q(document.body, "[data-testid=sheet-merge]");
+    expect(sheet.querySelector("h2")!.textContent).toBe("Merge Amazon");
+    expect(sheet.textContent).toContain("One login will be saved. The other will be removed.");
+    expect(sheet.textContent).toContain("Same in both");
+    // A = the more complete "Amazon"; B = "amazon.com" (no username). Real values only.
+    expect(q(sheet, ".mg-ring.a").textContent).toContain("Amazon");
+    expect(q(sheet, ".mg-ring.b").textContent).toContain("amazon.com");
+    const user = all(sheet, "[data-testid=merge-opt][data-field=username]");
+    expect(user.map((o) => o.textContent)).toEqual(["shop@example.com", "Empty"]);
+    expect(q(sheet, "[data-field=username][data-side=a]").classList.contains("sel")).toBe(true);
+    expect(sheet.textContent).not.toContain("No username");
+    click(sheet, "[data-field=password][data-side=b]");
+    click(sheet, "[data-field=name][data-side=b]");
+    click(document.body, "[data-testid=merge-confirm]");
+    expect(document.querySelector("[data-testid=sheet-merge]")).toBeNull();
+    expect(root.querySelector("[data-testid=merge-suggestion]")).toBeNull();
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("3 of 5");
+    expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 2");
+    expect(all(root, "[data-testid=login]").filter((r) => /amazon/i.test(r.textContent!))).toHaveLength(1);
+  });
+});
+
+describe("Save CSV", () => {
+  it("website-only gaps warn, offer Save anyway, and confirm before writing (1Password blank website)", async () => {
+    const { root, saves } = setup();
+    await unlock(root);
+    click(root, "[data-testid=save]");
+    expect(q(document.body, "[data-testid=sheet-needs-look]").textContent).toContain("no website");
+    expect(saves).toHaveLength(0);
+    click(document.body, "[data-testid=save-anyway]");
+    expect(saves).toHaveLength(0);
+    click(document.body, "[data-testid=confirm-save]");
+    await vi.waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].fileName).toBe("samsung-pass-1password.csv");
+    expect(saves[0].csv.startsWith("Title,")).toBe(false);
+    expect(saves[0].csv).not.toMatch(/no url|no title|no username/);
+    await vi.waitFor(() => expect(document.querySelector("[data-testid=sheet-import-guide]")).not.toBeNull());
+    const guide = q(document.body, "[data-testid=sheet-import-guide]");
+    expect(guide.textContent).toContain("Import into 1Password");
+    expect(guide.textContent).toContain("Title, Website, Username, Password, Notes");
+    click(document.body, "[data-testid=guide-done]");
+    expect(root.querySelector(".reminder")).not.toBeNull();
+  });
+
+  it("Google keeps its no url for missing websites", async () => {
+    localStorage.setItem(FORMAT_KEY, "google");
+    const { root, saves } = setup();
+    await unlock(root);
+    click(root, "[data-testid=save]");
+    click(document.body, "[data-testid=save-anyway]");
+    click(document.body, "[data-testid=confirm-save]");
+    await vi.waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].fileName).toBe("samsung-pass-google.csv");
+    expect(saves[0].csv).toContain("no url");
+  });
+
+  it("title/username gaps block Save (no Save anyway, no placeholders); Review opens edit", async () => {
+    const { root, saves } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=save]");
+    const sheet = q(document.body, "[data-testid=sheet-needs-look]");
+    expect(sheet.textContent).toContain("3 logins need a look");
+    expect(sheet.querySelector("[data-testid=save-anyway]")).toBeNull();
+    click(sheet, "[data-testid=review]");
+    expect(document.querySelector("[data-testid=sheet-edit]")).not.toBeNull();
+    expect(saves).toHaveLength(0);
+  });
+
+  it("Other writes a headered generic passwords.csv with generic import steps", async () => {
+    localStorage.setItem(FORMAT_KEY, "other");
+    const { root, saves } = setup();
+    await unlock(root);
+    click(root, "[data-testid=needs-look-item]");
+    click(document.body, "[data-testid=edit-delete]");
+    click(root, "[data-testid=save]");
+    click(document.body, "[data-testid=confirm-save]");
+    await vi.waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].fileName).toBe("passwords.csv");
+    expect(saves[0].csv.replace(/^\uFEFF/, "").split("\r\n")[0]).toBe("Title,Website,Username,Password,Notes");
+    expect(saves[0].csv).not.toContain("JBSWY3DPEHPK3PXP");
+    await vi.waitFor(() => expect(document.querySelector("[data-testid=sheet-import-guide]")).not.toBeNull());
+    expect(q(document.body, "[data-testid=sheet-import-guide]").textContent).toContain("Import into your password manager");
   });
 });
