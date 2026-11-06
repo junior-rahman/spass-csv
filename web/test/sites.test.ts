@@ -36,4 +36,33 @@ describe("websites", () => {
     expect(login.needsSite).toBe(true);
     expect(normalizeUserUrl("http://x.test/a")).toBe("http://x.test/a");
   });
+
+  it("does not map Samsung Internet to samsung.com", () => {
+    expect(resolveUrl("com.sec.android.app.sbrowser", "")).toEqual({
+      url: "",
+      needsSite: true,
+      appLabel: "com.sec.android.app.sbrowser"
+    });
+  });
+
+  it("never lets a package mapping replace a website from the export", () => {
+    expect(resolveUrl("https://netflix.com", "com.sec.android.app.sbrowser")).toEqual({
+      url: "https://netflix.com",
+      needsSite: false,
+      appLabel: "com.sec.android.app.sbrowser"
+    });
+    expect(resolveUrl("netflix.com", "com.sec.android.app.sbrowser")).toEqual({
+      url: "https://netflix.com",
+      needsSite: false,
+      appLabel: "com.sec.android.app.sbrowser"
+    });
+  });
+
+  it("still maps Samsung Pay to samsung.com when that is the only site hint", () => {
+    expect(resolveUrl("com.samsung.android.spay", "")).toEqual({
+      url: "https://samsung.com",
+      needsSite: false,
+      appLabel: "com.samsung.android.spay"
+    });
+  });
 });

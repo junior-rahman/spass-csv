@@ -82,8 +82,7 @@ export const APP_SITES: Readonly<Record<string, string>> = {
   "com.todoist": "https://todoist.com",
   "com.evernote": "https://evernote.com",
   "com.nytimes.android": "https://nytimes.com",
-  "com.samsung.android.spay": "https://samsung.com",
-  "com.sec.android.app.sbrowser": "https://samsung.com"
+  "com.samsung.android.spay": "https://samsung.com"
 };
 
 const BY_LOWER = new Map<string, string>();

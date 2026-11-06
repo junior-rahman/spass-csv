@@ -31,15 +31,19 @@ export interface ResolvedUrl {
   appLabel: string;
 }
 
-/** URL comes only from the export itself or the curated package map. Never guessed. */
+/** URL comes from the export first, then the curated package map. A real website is never overwritten. */
 export function resolveUrl(raw: string, packageName: string): ResolvedUrl {
-  const pkg = packageName || extractPackage(raw);
+  const rawPkg = extractPackage(raw);
+  const pkg = packageName || rawPkg;
+  if (/^https?:\/\//i.test(raw)) return { url: raw, needsSite: false, appLabel: packageName || "" };
+  // Bare domains (netflix.com) win over a package field such as Samsung Internet.
+  if (!rawPkg) {
+    const normalized = normalizeUserUrl(raw);
+    if (normalized) return { url: normalized, needsSite: false, appLabel: packageName || "" };
+  }
   const mapped = pkg ? siteForPackage(pkg) : "";
   if (mapped) return { url: mapped, needsSite: false, appLabel: pkg };
-  if (/^https?:\/\//i.test(raw)) return { url: raw, needsSite: false, appLabel: "" };
   if (pkg) return { url: "", needsSite: true, appLabel: pkg };
-  const normalized = normalizeUserUrl(raw);
-  if (normalized) return { url: normalized, needsSite: false, appLabel: "" };
   return { url: "", needsSite: true, appLabel: "" };
 }
 
