@@ -10,6 +10,11 @@ describe("importSteps", () => {
     expect(op.importSteps.join("\n")).toContain("Title, Website, Username, Password, Notes");
   });
   it("full destination names", () => {
-    expect(FORMATS.map((f) => f.label)).toEqual(["1Password", "Google Password Manager", "Apple Passwords", "Bitwarden"]);
+    expect(FORMATS.map((f) => f.label)).toEqual(["1Password", "Google Password Manager", "Apple Passwords", "Bitwarden", "Other"]);
+  });
+  it("Other is generic passwords.csv", () => {
+    const o = FORMATS.find((f) => f.id === "other")!;
+    expect(o.fileName).toBe("passwords.csv");
+    expect(o.importSteps.join(" ")).toMatch(/password manager/);
   });
 });

@@ -65,4 +65,4 @@ export interface Vault {
   alreadyPlain: boolean;
 }
 
-export type FormatId = "1password" | "google" | "apple" | "bitwarden";
+export type FormatId = "1password" | "google" | "apple" | "bitwarden" | "other";

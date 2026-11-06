@@ -9,3 +9,4 @@ export * from "./csv";
 export * from "./formats";
 export * from "./sample";
 export * from "./unlock";
+export * from "./vault-ops";

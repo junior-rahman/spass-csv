@@ -38,6 +38,14 @@ export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): s
       true
     );
   }
+  if (format === "other") {
+    return toCsv(
+      ["Title", "Website", "Username", "Password", "Notes"],
+      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.note]),
+      ["Password"],
+      false
+    );
+  }
   if (format === "apple") {
     return toCsv(
       ["Title", "URL", "Username", "Password", "Notes", "OTPAuth"],

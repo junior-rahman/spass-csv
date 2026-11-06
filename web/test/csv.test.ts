@@ -84,15 +84,15 @@ describe("golden login CSVs", () => {
 });
 
 describe("formats", () => {
-  it("has four equal formats in fixed order, 1Password default", () => {
-    expect(FORMATS.map((f) => f.id)).toEqual(["1password", "google", "apple", "bitwarden"]);
+  it("has four named formats plus Other in fixed order, 1Password default", () => {
+    expect(FORMATS.map((f) => f.id)).toEqual(["1password", "google", "apple", "bitwarden", "other"]);
     expect(DEFAULT_FORMAT).toBe("1password");
     expect(fileNameFor("apple")).toBe("samsung-pass-apple.csv");
   });
 
   it("only google needs a url placeholder", () => {
     expect(formatRequiresUrl("google")).toBe(true);
-    for (const f of ["1password", "apple", "bitwarden"] as const) expect(formatRequiresUrl(f)).toBe(false);
+    for (const f of ["1password", "apple", "bitwarden", "other"] as const) expect(formatRequiresUrl(f)).toBe(false);
   });
 });
 
