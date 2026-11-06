@@ -2,21 +2,29 @@ import {
   FORMATS,
   GAP_LABEL,
   GAP_TAG,
+  MERGE_FIELDS,
   NAMED_FORMATS,
   SpassError,
   addressesToCsv,
   applyLoginEdit,
   cardsToCsv,
+  defaultMergeChoice,
+  duplicateGroups,
   fileNameFor,
+  groupName,
   lookGaps,
   loginsToCsv,
+  mergeLogins,
   needsLook,
   notesToCsv,
   resolvedTitle,
+  siteKey,
   unlockText,
   type FormatId,
   type Login,
   type LoginEdit,
+  type MergeChoice,
+  type MergeField,
   type Vault
 } from "../lib";
 import { el, icon, pRingMark } from "./dom";
@@ -25,14 +33,18 @@ import { loadFormat, storeFormat } from "./prefs";
 
 type Status = "form" | "working" | "done";
 type Stage = "home" | "password" | "unlocking" | "vault";
+type AfterEdit = "look" | "browse";
 type Sheet =
   | null
   | { kind: "save"; fileName: string; csv: string; primary: boolean }
   | { kind: "needs-look" }
+  | { kind: "look" }
+  | { kind: "browse"; query: string }
   | { kind: "about" }
   | { kind: "destination" }
   | { kind: "import-guide" }
-  | { kind: "edit"; id: string; draft: LoginEdit; showPassword: boolean }
+  | { kind: "edit"; id: string; draft: LoginEdit; showPassword: boolean; after?: AfterEdit; browseQuery?: string }
+  | { kind: "merge"; aId: string; bId: string; choice: MergeChoice }
   | { kind: "extras"; which: "cards" | "notes" | "addresses" };
 
 interface Toast { text: string; undo?: () => void }
@@ -95,6 +107,27 @@ export function isSpassFileName(name: string): boolean {
 
 function hostOf(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
+}
+
+function placeCount(logins: Login[]): number {
+  return new Set(logins.map((l) => siteKey(l) || resolvedTitle(l).toLowerCase() || l.id)).size;
+}
+
+function matchesQuery(login: Login, q: string): boolean {
+  if (!q) return true;
+  const hay = [resolvedTitle(login), login.username, login.url, siteKey(login), login.note].join("\n").toLowerCase();
+  return hay.includes(q);
+}
+
+function placeGroups(logins: Login[]): { label: string; items: Login[] }[] {
+  const map = new Map<string, Login[]>();
+  for (const l of logins) {
+    const label = siteKey(l) || resolvedTitle(l) || "Other";
+    const items = map.get(label);
+    if (items) items.push(l);
+    else map.set(label, [l]);
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([label, items]) => ({ label, items }));
 }
 
 const DOTS = "••••••••";
@@ -167,16 +200,25 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     render();
   }
 
-  function openEdit(login: Login) {
+  function openEdit(login: Login, after?: AfterEdit) {
+    const browseQuery = state.sheet?.kind === "browse" ? state.sheet.query : "";
     state.sheet = {
       kind: "edit",
       id: login.id,
       showPassword: false,
+      after,
+      browseQuery,
       draft: { name: resolvedTitle(login), url: login.url, username: login.username, password: login.password, note: login.note }
     };
     const gap = lookGaps(login, state.format)[0];
     state.focusNext = gap === "url" ? "edit-url" : gap === "username" ? "edit-username" : gap === "title" ? "edit-title" : "";
     render();
+  }
+
+  function returnAfter(after?: AfterEdit, browseQuery = "") {
+    if (after === "look") state.sheet = { kind: "look" };
+    else if (after === "browse") state.sheet = { kind: "browse", query: browseQuery };
+    else state.sheet = null;
   }
 
   function deleteLogin(id: string) {
@@ -190,6 +232,25 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       text: `Deleted ${resolvedTitle(login) || "Untitled login"}`,
       undo: () => { vault.logins.splice(Math.min(index, vault.logins.length), 0, login); }
     };
+    render();
+  }
+
+  function openMerge(group: Login[]) {
+    // A is the more complete record (fewest gaps), so defaults keep the better data.
+    const [a, b] = [...group].sort((x, y) => lookGaps(x, state.format).length - lookGaps(y, state.format).length);
+    state.sheet = { kind: "merge", aId: a.id, bId: b.id, choice: defaultMergeChoice(a, b) };
+    render();
+  }
+
+  function confirmMerge(aId: string, bId: string, choice: MergeChoice) {
+    const vault = state.vault;
+    const a = findLogin(aId);
+    const b = findLogin(bId);
+    if (!vault || !a || !b) return;
+    const merged = mergeLogins(a, b, choice);
+    vault.logins = vault.logins.filter((l) => l.id !== bId).map((l) => (l.id === aId ? merged : l));
+    state.sheet = null;
+    state.toast = { text: `Merged ${resolvedTitle(merged) || "login"}` };
     render();
   }
 
@@ -329,12 +390,12 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     ]);
   }
 
-  function loginRow(login: Login, trailing: HTMLElement, testid: string): HTMLElement {
+  function loginRow(login: Login, trailing: HTMLElement, testid: string, after?: AfterEdit): HTMLElement {
     const title = resolvedTitle(login);
     const host = hostOf(login.url);
     const sub = login.username ? `${login.username} · ${DOTS}` : host || login.note.split("\n")[0] || "";
     return el("li", {}, [
-      el("button", { type: "button", class: "row", "data-testid": testid, "data-id": login.id, onclick: () => openEdit(login) }, [
+      el("button", { type: "button", class: "row", "data-testid": testid, "data-id": login.id, onclick: () => openEdit(login, after) }, [
         el("span", { class: "av", "aria-hidden": "true" }, [title ? title.charAt(0) : "?"]),
         el("span", { class: "t" }, [
           el("b", { class: title ? "" : "untitled" }, [title || "Untitled login"]),
@@ -367,21 +428,33 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       const a = vault.addresses[0];
       tiles.push(tile("tile-addresses", "home", plural(vault.addresses.length, "Address", "Addresses"), a.city || a.street || a.name, "addresses"));
     }
+    const places = placeCount(complete);
+    const heroMeta = complete.length === 0
+      ? (vault.logins.length ? "Fix the logins that need a look." : "No logins in this export.")
+      : `across ${plural(places, "place")}`;
+    const groups = duplicateGroups(vault.logins);
     return el("div", { class: "vault-main" }, [
       el("button", { type: "button", class: "chip", "data-testid": "destination-chip", onclick: () => { state.sheet = { kind: "destination" }; render(); } }, [
         el("span", { class: "dot", "aria-hidden": "true" }), "Save for ", el("b", {}, [formatInfo().label]), icon("chevron_right")
       ]),
-      look.length ? el("section", { class: "tray caution", "data-testid": "needs-look" }, [
+      el("div", { class: "ov-hero", "data-testid": "overview" }, [
         el("span", { class: "ring-field", "aria-hidden": "true" }),
-        el("div", { class: "tray-lbl" }, [el("b", { "data-testid": "needs-look-count" }, [`Needs a look · ${look.length}`]), el("span", {}, ["Tap to fix"])]),
-        el("ul", { class: "rows" }, look.map((l) => loginRow(l, el("span", { class: "miss" }, [GAP_TAG[lookGaps(l, state.format)[0]]]), "needs-look-item")))
-      ]) : null,
-      el("section", { class: "tray", "data-testid": "logins" }, [
-        el("div", { class: "tray-lbl" }, [el("b", {}, ["Logins"]), el("span", { "data-testid": "logins-count" }, [`${complete.length} of ${vault.logins.length}`])]),
-        complete.length
-          ? el("ul", { class: "rows" }, complete.map((l) => loginRow(l, icon("chevron_right"), "login")))
-          : el("p", { class: "empty" }, [vault.logins.length ? "Fix the logins above to finish." : "No logins in this export."])
+        el("div", { class: "ov-n", "data-testid": "logins-count" }, [String(complete.length)]),
+        el("div", { class: "ov-sub" }, [complete.length === 1 ? "ready login" : "ready logins"]),
+        el("p", { class: "ov-meta", "data-testid": "places-count" }, [heroMeta])
       ]),
+      look.length ? el("button", { type: "button", class: "tray caution look-btn", "data-testid": "needs-look", onclick: () => { state.sheet = { kind: "look" }; render(); } }, [
+        el("span", { class: "ring-field", "aria-hidden": "true" }),
+        el("div", { class: "tray-lbl" }, [el("b", { "data-testid": "needs-look-count" }, [`Needs a look · ${look.length}`]), el("span", {}, ["Tap to fix"])])
+      ]) : null,
+      ...groups.map((group) => el("button", { type: "button", class: "merge-banner", "data-testid": "merge-suggestion", onclick: () => openMerge(group) }, [
+        el("span", { class: "two", "aria-hidden": "true" }),
+        el("span", { class: "t" }, [`${group.length} ${groupName(group)} logins look like`, el("span", {}, ["the same site"])]),
+        el("b", {}, ["Merge ›"])
+      ])),
+      complete.length ? el("button", { type: "button", class: "browse-btn", "data-testid": "browse-logins", onclick: () => { state.sheet = { kind: "browse", query: "" }; render(); } }, [
+        "Browse logins", icon("chevron_right")
+      ]) : null,
       tiles.length ? el("div", { class: "tiles" }, tiles) : null,
       state.saved ? el("p", { class: "reminder", role: "status" }, [icon("delete"), "Delete the CSV after you import it. It holds your passwords in plain text."]) : null
     ]);
@@ -441,6 +514,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   function editSheet(s: Extract<Sheet, { kind: "edit" }>, close: () => void): (HTMLElement | null)[] {
     const login = findLogin(s.id);
     if (!login) return [];
+    const back = () => { returnAfter(s.after, s.browseQuery); render(); };
     const gaps = lookGaps(login, state.format);
     const title = s.draft.name || resolvedTitle(login);
     const field = (key: keyof LoginEdit, id: string, label: string, opts: { type?: string; placeholder?: string; hint?: string; trailing?: HTMLElement } = {}) => {
@@ -458,7 +532,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       el("div", { class: "sheet-head" }, [
         el("span", { class: "av", "aria-hidden": "true" }, [title ? title.charAt(0) : "?"]),
         el("h2", {}, [title || "Untitled login"]),
-        el("button", { type: "button", class: "x", "aria-label": "Close", onclick: close }, [icon("close")])
+        el("button", { type: "button", class: "x", "aria-label": "Close", onclick: back }, [icon("close")])
       ]),
       field("name", "edit-title", "Title", { placeholder: "Add a title", hint: gaps.includes("title") ? "Add a title so you can find this login." : undefined }),
       field("url", "edit-url", "Website", { type: "url", placeholder: "example.com", hint: gaps.includes("url") ? `Add a website so ${dest} can match this login.` : undefined }),
@@ -472,7 +546,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         el("button", { type: "button", class: "danger-btn", "data-testid": "edit-delete", onclick: () => deleteLogin(login.id) }, ["Delete"]),
         el("button", { type: "button", class: "cta", "data-testid": "edit-save", onclick: () => {
           applyLoginEdit(login, s.draft);
-          state.sheet = null;
+          returnAfter(s.after, s.browseQuery);
           render();
         } }, ["Save changes"])
       ])
@@ -500,6 +574,100 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         websiteOnly ? el("button", { type: "button", class: "ghost", "data-testid": "save-anyway", onclick: openSaveSheet }, ["Save anyway"]) : null,
         el("button", { type: "button", class: "ghost", onclick: close }, ["Cancel"])
       ])
+    ];
+  }
+
+  const FIELD_LABEL: Record<MergeField, string> = { name: "Title", url: "Website", username: "Username", password: "Password", note: "Notes" };
+
+  function mergeSheet(s: Extract<Sheet, { kind: "merge" }>, close: () => void): (HTMLElement | null)[] {
+    const a = findLogin(s.aId);
+    const b = findLogin(s.bId);
+    if (!a || !b) return [];
+    const show = (f: MergeField, l: Login) => f === "password" ? "••••••" : f === "url" ? (hostOf(l.url) || l.url) : l[f].split("\n")[0];
+    const rows = MERGE_FIELDS.map((f) => {
+      const va = f === "url" ? hostOf(a.url) || a.url.trim() : a[f].trim();
+      const vb = f === "url" ? hostOf(b.url) || b.url.trim() : b[f].trim();
+      if (!va && !vb) return null;
+      if (va === vb) {
+        return el("div", { class: "mg-f" }, [el("span", { class: "lbl" }, [FIELD_LABEL[f]]), el("div", { class: "mg-same" }, [el("span", { class: f === "password" ? "dots" : "" }, [show(f, a)]), el("em", {}, ["Same in both"])])]);
+      }
+      const opt = (side: "a" | "b", l: Login) => {
+        const sel = s.choice[f] === side;
+        const value = l[f].trim();
+        return el("button", { type: "button", class: sel ? "mg-o sel" : "mg-o", "data-testid": "merge-opt", "data-field": f, "data-side": side, "aria-pressed": sel ? "true" : "false", onclick: () => { s.choice[f] = side; render(); } }, [
+          el("i", { "aria-hidden": "true" }, [sel ? icon("check") : null]),
+          el("span", { class: f === "password" ? "v dots" : value ? "v" : "v muted" }, [value ? show(f, l) : "Empty"]),
+          f === "password" ? el("span", { class: "muted" }, [`· ${side.toUpperCase()}`]) : null
+        ]);
+      };
+      return el("div", { class: "mg-f" }, [el("span", { class: "lbl" }, [FIELD_LABEL[f]]), el("div", { class: "mg-opts" }, [opt("a", a), opt("b", b)])]);
+    });
+    return [
+      el("div", { class: "sheet-head" }, [el("h2", {}, [`Merge ${groupName([a, b])}`]), el("button", { type: "button", class: "x", "aria-label": "Close", onclick: close }, [icon("close")])]),
+      el("div", { class: "mg-hero", "aria-hidden": "true" }, [
+        el("div", { class: "mg-ring a" }, [el("b", {}, ["A"]), el("span", {}, [resolvedTitle(a) || "Untitled"])]),
+        el("div", { class: "mg-ring b" }, [el("b", {}, ["B"]), el("span", {}, [resolvedTitle(b) || "Untitled"])]),
+        el("div", { class: "mg-core" }, ["1"])
+      ]),
+      el("p", { class: "mg-help" }, ["One login will be saved. The other will be removed."]),
+      ...rows,
+      el("div", { class: "acts" }, [
+        el("button", { type: "button", class: "ghost", "data-testid": "merge-cancel", onclick: close }, ["Cancel"]),
+        el("button", { type: "button", class: "cta", "data-testid": "merge-confirm", onclick: () => confirmMerge(a.id, b.id, s.choice) }, ["Merge"])
+      ])
+    ];
+  }
+
+  function lookSheet(close: () => void): (HTMLElement | null)[] {
+    const vault = state.vault!;
+    const look = needsLook(vault.logins, state.format);
+    return [
+      el("div", { class: "sheet-head" }, [
+        el("h2", {}, [look.length ? `Needs a look · ${look.length}` : "Needs a look"]),
+        el("button", { type: "button", class: "x", "aria-label": "Close", onclick: close }, [icon("close")])
+      ]),
+      look.length
+        ? el("ul", { class: "rows look-rows", "data-testid": "look-list" }, look.map((l) =>
+          loginRow(l, el("span", { class: "miss" }, [GAP_TAG[lookGaps(l, state.format)[0]]]), "needs-look-item", "look")))
+        : el("p", { class: "empty" }, ["Every login looks ready."])
+    ];
+  }
+
+  function browseSheet(s: Extract<Sheet, { kind: "browse" }>, close: () => void): (HTMLElement | null)[] {
+    const vault = state.vault!;
+    const lookIds = new Set(needsLook(vault.logins, state.format).map((l) => l.id));
+    const ready = vault.logins.filter((l) => !lookIds.has(l.id));
+    const q = s.query.trim().toLowerCase();
+    const filtered = ready.filter((l) => matchesQuery(l, q));
+    const groups = placeGroups(filtered);
+    const search = el("input", {
+      id: "browse-query",
+      type: "search",
+      "data-testid": "browse-query",
+      placeholder: "Find a login",
+      autocomplete: "off",
+      spellcheck: "false"
+    }) as HTMLInputElement;
+    search.value = s.query;
+    search.addEventListener("input", () => {
+      if (state.sheet?.kind === "browse") {
+        state.sheet.query = search.value;
+        render();
+      }
+    });
+    const list = filtered.length === 0
+      ? el("p", { class: "empty" }, [q ? "No matching logins." : "No ready logins yet."])
+      : el("div", { "data-testid": "browse-list" }, groups.flatMap((g) => [
+        groups.length > 1 || g.items.length > 1 ? el("p", { class: "place-lbl" }, [g.label]) : null,
+        el("ul", { class: "rows" }, g.items.map((l) => loginRow(l, icon("chevron_right"), "login", "browse")))
+      ]));
+    return [
+      el("div", { class: "sheet-head" }, [
+        el("h2", {}, ["Logins"]),
+        el("button", { type: "button", class: "x", "aria-label": "Close", onclick: close }, [icon("close")])
+      ]),
+      el("div", { class: "browse-find" }, [search]),
+      list
     ];
   }
 
@@ -574,7 +742,10 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const close = () => { state.sheet = null; render(); };
     let body: (HTMLElement | null)[];
     if (s.kind === "needs-look") body = needsLookSheet(close);
+    else if (s.kind === "look") body = lookSheet(close);
+    else if (s.kind === "browse") body = browseSheet(s, close);
     else if (s.kind === "edit") body = editSheet(s, close);
+    else if (s.kind === "merge") body = mergeSheet(s, close);
     else if (s.kind === "extras") body = extrasSheet(s, close);
     else if (s.kind === "destination") body = destinationSheet(close);
     else if (s.kind === "save") {

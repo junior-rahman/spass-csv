@@ -97,6 +97,23 @@ button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px so
 .vault-head .t span { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vault-head .icon-btn { width: 40px; }
 .vault-main { flex: 1; padding: 6px 20px 24px; }
+.ov-hero { position: relative; overflow: hidden; margin: 16px 0 6px; padding: 18px 4px 12px; }
+.ov-hero .ring-field { right: -36px; top: -54px; width: 200px; height: 200px; }
+.ov-n { font-size: 56px; font-weight: 600; letter-spacing: -0.045em; line-height: 1; }
+.ov-sub { margin-top: 8px; font-size: 16px; font-weight: 500; }
+.ov-meta { margin-top: 6px; font-size: 13.5px; color: var(--muted); }
+.look-btn { display: flex; width: 100%; text-align: left; color: inherit; padding: 16px; margin-top: 14px; }
+.look-btn .tray-lbl { margin: 0; width: 100%; }
+.browse-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 44px; margin-top: 8px; padding: 0 4px; border: 0; background: none; color: var(--fern); font: 500 14px Outfit, sans-serif; }
+.browse-btn .icon { width: 16px; height: 16px; opacity: .7; }
+.browse-find { margin: 12px 0 8px; }
+.browse-find input { width: 100%; height: 48px; border-radius: 14px; padding: 0 16px; background: var(--soil); border: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); color: var(--cream); font: 400 16px Outfit, sans-serif; }
+.place-lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); padding: 12px 4px 4px; }
+.look-rows { margin-top: 8px; }
+.merge-banner { width: 100%; margin-top: 10px; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 18px; background: color-mix(in srgb, var(--olive) 12%, var(--soil)); border: 1px solid color-mix(in srgb, var(--olive) 35%, transparent); font-size: 13.5px; text-align: left; }
+.merge-banner .t { flex: 1; line-height: 1.3; }
+.merge-banner .t span { display: block; color: var(--muted); }
+.merge-banner b { font-weight: 600; color: var(--fern); }
 .chip { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 12px; border-radius: 20px; background: color-mix(in srgb, var(--cream) 6%, var(--soil)); border: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); font: 400 13.5px Outfit, sans-serif; }
 .chip b { font-weight: 600; }
 .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--olive); box-shadow: 0 0 0 3px color-mix(in srgb, var(--olive) 30%, transparent); }
@@ -199,6 +216,26 @@ li:first-child > .row { border-top: 0; }
 
 /* Merge sheet */
 .dots { letter-spacing: .18em; }
+.mg-hero { position: relative; height: 118px; margin: 6px auto 0; width: 270px; }
+.mg-ring { position: absolute; top: 8px; width: 100px; height: 100px; border-radius: 50%; border: 1.5px solid var(--olive); display: grid; place-items: center; align-content: center; font-size: 12px; text-align: center; color: var(--muted); }
+.mg-ring b { display: block; font-size: 13px; color: var(--cream); }
+.mg-ring.a { left: 37px; background: color-mix(in srgb, var(--olive) 10%, transparent); padding-right: 26px; }
+.mg-ring.b { left: 135px; border-style: dashed; border-color: color-mix(in srgb, var(--olive) 60%, transparent); padding-left: 26px; }
+.mg-ring span { max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mg-core { position: absolute; left: 111px; top: 34px; width: 50px; height: 50px; border-radius: 50%; background: var(--olive); color: var(--soil); display: grid; place-items: center; font-weight: 600; font-size: 20px; box-shadow: 0 0 34px color-mix(in srgb, var(--olive) 55%, transparent); }
+.mg-help { text-align: center; font-size: 13px; color: color-mix(in srgb, var(--cream) 66%, transparent); margin-bottom: 4px; }
+.mg-f { margin-top: 12px; }
+.mg-f > label, .mg-f > .lbl { display: flex; justify-content: space-between; font-size: 12.5px; margin: 0 4px 6px; color: color-mix(in srgb, var(--cream) 62%, transparent); }
+.mg-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mg-o { height: 50px; border-radius: 15px; background: var(--soil); border: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); display: flex; align-items: center; gap: 6px; padding: 0 8px; font: 400 12.5px Outfit, sans-serif; min-width: 0; text-align: left; }
+.mg-o span.v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mg-o i { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--cream) 30%, transparent); display: grid; place-items: center; font-style: normal; }
+.mg-o i .icon { width: 12px; height: 12px; }
+.mg-o.sel { border: 1.5px solid var(--olive); background: color-mix(in srgb, var(--olive) 16%, var(--soil)); }
+.mg-o.sel i { background: var(--olive); border-color: var(--olive); color: var(--soil); }
+.mg-same { height: 50px; border-radius: 15px; background: var(--soil); border: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); display: flex; align-items: center; padding: 0 14px; font-size: 14px; gap: 8px; }
+.mg-same span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mg-same em { font-style: normal; font-size: 12px; color: var(--fern); flex: none; }
 
 /* Snackbar */
 .toast { position: fixed; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 448px; bottom: calc(110px + env(safe-area-inset-bottom)); min-height: 54px; border-radius: 16px; background: var(--cream); color: var(--soil); display: flex; align-items: center; padding: 8px 8px 8px 16px; gap: 10px; font-size: 14.5px; font-weight: 500; box-shadow: 0 12px 32px rgba(0, 0, 0, .5); z-index: 20; }

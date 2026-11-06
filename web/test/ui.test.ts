@@ -35,6 +35,7 @@ function groveExport(): Promise<string> {
     row("Netflix", "https://netflix.com", "n@example.com", "nf", "", ""),
     row("GitHub", "https://github.com", "junior", "gh", "", ""),
     row("Amazon", "https://amazon.com", "shop@example.com", "new-pass", "", ""),
+    row("Amazon shopping", "https://www.amazon.com", "shop@example.com", "older-pass", "", ""),
     ""
   ].join("\n");
   return encryptSpass(plain, TEST_PASSWORD);
@@ -195,17 +196,34 @@ describe("destination chip + sheet", () => {
 });
 
 describe("organize vault", () => {
-  it("shows Needs a look, logins complete-of-total, and tiles, with no merge suggestion", async () => {
+  it("shows an overview, Needs a look as one tap, a merge suggestion, and no login dump", async () => {
     const { root } = setup();
     await unlock(root, await groveExport());
     expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 3");
-    const items = all(root, "[data-testid=needs-look-item]").map((r) => r.textContent);
+    expect(root.querySelector("[data-testid=needs-look-item]")).toBeNull();
+    expect(q(root, "[data-testid=merge-suggestion]").textContent).toMatch(/2 amazon\.com logins look like.*the same site.*Merge/);
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("4");
+    expect(q(root, "[data-testid=places-count]").textContent).toBe("across 3 places");
+    expect(root.querySelector("[data-testid=login]")).toBeNull();
+    click(root, "[data-testid=needs-look]");
+    const items = all(document.body, "[data-testid=needs-look-item]").map((r) => r.textContent);
     expect(items[0]).toMatch(/Bank login.*jsmith.*No website/);
     expect(items[1]).toMatch(/amazon\.com.*No username/);
     expect(items[2]).toMatch(/Untitled login.*No title/);
-    expect(root.querySelector("[data-testid=merge-suggestion]")).toBeNull();
-    expect(q(root, "[data-testid=logins-count]").textContent).toBe("3 of 6");
-    expect(all(root, "[data-testid=login]").map((r) => r.querySelector("b")!.textContent)).toEqual(["Netflix", "GitHub", "Amazon"]);
+  });
+
+  it("browse lists ready logins grouped by place and search filters them", async () => {
+    const { root } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=browse-logins]");
+    const sheet = q(document.body, "[data-testid=sheet-browse]");
+    expect(all(sheet, "[data-testid=login]").map((r) => r.querySelector("b")!.textContent)).toEqual(["Amazon", "Amazon shopping", "GitHub", "Netflix"]);
+    const find = q<HTMLInputElement>(sheet, "[data-testid=browse-query]");
+    find.value = "git";
+    find.dispatchEvent(new Event("input"));
+    expect(all(document.body, "[data-testid=sheet-browse] [data-testid=login]").map((r) => r.querySelector("b")!.textContent)).toEqual(["GitHub"]);
+    click(document.body, "[data-testid=login]");
+    expect(q(document.body, "[data-testid=sheet-edit]").querySelector("h2")!.textContent).toBe("GitHub");
   });
 
   it("sample export folds cards, notes and addresses into tiles that save their CSVs", async () => {
@@ -263,7 +281,8 @@ describe("organize vault", () => {
   it("edit sheet: website focused for the gap, Save changes fixes it and the count drops", async () => {
     const { root } = setup();
     await unlock(root, await groveExport());
-    click(root, "[data-testid=needs-look-item]");
+    click(root, "[data-testid=needs-look]");
+    click(document.body, "[data-testid=needs-look-item]");
     const sheet = q(document.body, "[data-testid=sheet-edit]");
     expect(sheet.querySelector("h2")!.textContent).toBe("Bank login");
     expect(document.activeElement?.id).toBe("edit-url");
@@ -277,20 +296,59 @@ describe("organize vault", () => {
     click(sheet, "[data-testid=edit-save]");
     expect(document.querySelector("[data-testid=sheet-edit]")).toBeNull();
     expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 2");
-    expect(q(root, "[data-testid=logins-count]").textContent).toBe("4 of 6");
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("5");
   });
 
   it("delete is immediate with an Undo snackbar", async () => {
     const { root } = setup();
     await unlock(root, await groveExport());
-    click(root, "[data-testid=needs-look-item]");
+    click(root, "[data-testid=needs-look]");
+    click(document.body, "[data-testid=needs-look-item]");
     click(document.body, "[data-testid=edit-delete]");
     expect(q(document.body, "[data-testid=snackbar]").textContent).toContain("Deleted Bank login");
     expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 2");
-    expect(q(root, "[data-testid=logins-count]").textContent).toBe("3 of 5");
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("4");
     click(document.body, "[data-testid=undo]");
     expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 3");
-    expect(all(root, "[data-testid=needs-look-item]")[0].textContent).toContain("Bank login");
+    click(root, "[data-testid=needs-look]");
+    expect(all(document.body, "[data-testid=needs-look-item]")[0].textContent).toContain("Bank login");
+  });
+
+  it("merge sheet uses real values, lets you pick per field, and leaves one login", async () => {
+    const { root } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=merge-suggestion]");
+    const sheet = q(document.body, "[data-testid=sheet-merge]");
+    expect(sheet.querySelector("h2")!.textContent).toBe("Merge amazon.com");
+    expect(sheet.textContent).toContain("One login will be saved. The other will be removed.");
+    expect(sheet.textContent).toContain("Same in both");
+    expect(q(sheet, ".mg-ring.a").textContent).toContain("Amazon");
+    expect(q(sheet, ".mg-ring.b").textContent).toContain("Amazon shopping");
+    expect(all(sheet, "[data-testid=merge-opt][data-field=username]")).toHaveLength(0);
+    expect(sheet.textContent).not.toContain("No username");
+    click(sheet, "[data-field=password][data-side=b]");
+    click(sheet, "[data-field=name][data-side=b]");
+    click(document.body, "[data-testid=merge-confirm]");
+    expect(document.querySelector("[data-testid=sheet-merge]")).toBeNull();
+    expect(root.querySelector("[data-testid=merge-suggestion]")).toBeNull();
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("3");
+    expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 3");
+    click(root, "[data-testid=browse-logins]");
+    expect(all(document.body, "[data-testid=sheet-browse] [data-testid=login]").filter((r) => /amazon/i.test(r.textContent!))).toHaveLength(1);
+  });
+
+  it("does not suggest merging different websites that share a username", async () => {
+    const row = (...cells: string[]) => cells.map((c) => (c ? b64(c) : "")).join(";");
+    const plain = [
+      "25", "true;true;true;true", "false", "next_table",
+      "title;host_url;username_value;password_value;credential_memo;otp",
+      row("Gmail", "https://mail.google.com", "me@gmail.com", "p1", "", ""),
+      row("Photos", "https://photos.google.com", "me@gmail.com", "p2", "", ""),
+      ""
+    ].join("\n");
+    const { root } = setup();
+    await unlock(root, await encryptSpass(plain, TEST_PASSWORD));
+    expect(root.querySelector("[data-testid=merge-suggestion]")).toBeNull();
   });
 
 });
@@ -345,7 +403,8 @@ describe("Save CSV", () => {
     localStorage.setItem(FORMAT_KEY, "other");
     const { root, saves } = setup();
     await unlock(root);
-    click(root, "[data-testid=needs-look-item]");
+    click(root, "[data-testid=needs-look]");
+    click(document.body, "[data-testid=needs-look-item]");
     click(document.body, "[data-testid=edit-delete]");
     click(root, "[data-testid=save]");
     click(document.body, "[data-testid=confirm-save]");
