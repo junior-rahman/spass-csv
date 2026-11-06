@@ -7,14 +7,9 @@ import {
   addressesToCsv,
   applyLoginEdit,
   cardsToCsv,
-  defaultMergeChoice,
-  duplicateGroups,
   fileNameFor,
-  groupName,
   lookGaps,
   loginsToCsv,
-  mergeLogins,
-  MERGE_FIELDS,
   needsLook,
   notesToCsv,
   resolvedTitle,
@@ -22,8 +17,6 @@ import {
   type FormatId,
   type Login,
   type LoginEdit,
-  type MergeChoice,
-  type MergeField,
   type Vault
 } from "../lib";
 import { el, icon, pRingMark } from "./dom";
@@ -40,7 +33,7 @@ type Sheet =
   | { kind: "destination" }
   | { kind: "import-guide" }
   | { kind: "edit"; id: string; draft: LoginEdit; showPassword: boolean }
-  | { kind: "merge"; aId: string; bId: string; choice: MergeChoice };
+  | { kind: "extras"; which: "cards" | "notes" | "addresses" };
 
 interface Toast { text: string; undo?: () => void }
 
@@ -200,25 +193,6 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     render();
   }
 
-  function openMerge(group: Login[]) {
-    // A is the more complete record (fewest gaps), so defaults keep the better data.
-    const [a, b] = [...group].sort((x, y) => lookGaps(x, state.format).length - lookGaps(y, state.format).length);
-    state.sheet = { kind: "merge", aId: a.id, bId: b.id, choice: defaultMergeChoice(a, b) };
-    render();
-  }
-
-  function confirmMerge(aId: string, bId: string, choice: MergeChoice) {
-    const vault = state.vault;
-    const a = findLogin(aId);
-    const b = findLogin(bId);
-    if (!vault || !a || !b) return;
-    const merged = mergeLogins(a, b, choice);
-    vault.logins = vault.logins.filter((l) => l.id !== bId).map((l) => (l.id === aId ? merged : l));
-    state.sheet = null;
-    state.toast = { text: `Merged ${resolvedTitle(merged) || "login"}` };
-    render();
-  }
-
   // ---------- pieces ----------
 
   function aboutButton(): HTMLElement {
@@ -355,24 +329,23 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const look = needsLook(vault.logins, state.format);
     const lookIds = new Set(look.map((l) => l.id));
     const complete = vault.logins.filter((l) => !lookIds.has(l.id));
-    const groups = duplicateGroups(vault.logins);
     const tiles: HTMLElement[] = [];
-    const tile = (testid: string, glyph: string, title: string, sub: string, csv: { fileName: string; csv: string } | null) =>
-      el(csv ? "button" : "div", {
-        class: "tile", "data-testid": testid, ...(csv ? { type: "button", onclick: () => { state.sheet = { kind: "save", ...csv, primary: false }; render(); } } : {})
+    const tile = (testid: string, glyph: string, title: string, sub: string, which: "cards" | "notes" | "addresses" | null) =>
+      el(which ? "button" : "div", {
+        class: "tile", "data-testid": testid, ...(which ? { type: "button", onclick: () => { state.sheet = { kind: "extras", which }; render(); } } : {})
       }, [el("span", { class: "glyph", "aria-hidden": "true" }, [icon(glyph)]), el("span", { class: "t" }, [el("b", {}, [title]), el("span", {}, [sub])])]);
     if (vault.cards.length) {
       const c = vault.cards[0];
       const last4 = c.number.replace(/\D/g, "").slice(-4);
-      tiles.push(tile("tile-cards", "credit_card", plural(vault.cards.length, "Card"), `${c.nickname}${last4 ? ` ••${last4}` : ""}`, { fileName: "samsung-pass-cards.csv", csv: cardsToCsv(vault.cards) }));
+      tiles.push(tile("tile-cards", "credit_card", plural(vault.cards.length, "Card"), `${c.nickname}${last4 ? ` ••${last4}` : ""}`, "cards"));
     }
     if (vault.notes.length) {
       const inMain = state.format === "bitwarden";
-      tiles.push(tile("tile-notes", "notes", plural(vault.notes.length, "Note"), inMain ? "In Bitwarden file" : vault.notes[0].title, inMain ? null : { fileName: "samsung-pass-notes.csv", csv: notesToCsv(vault.notes) }));
+      tiles.push(tile("tile-notes", "notes", plural(vault.notes.length, "Note"), inMain ? "In Bitwarden file" : vault.notes[0].title, inMain ? null : "notes"));
     }
     if (vault.addresses.length) {
       const a = vault.addresses[0];
-      tiles.push(tile("tile-addresses", "home", plural(vault.addresses.length, "Address", "Addresses"), a.city || a.street || a.name, { fileName: "samsung-pass-addresses.csv", csv: addressesToCsv(vault.addresses) }));
+      tiles.push(tile("tile-addresses", "home", plural(vault.addresses.length, "Address", "Addresses"), a.city || a.street || a.name, "addresses"));
     }
     return el("div", { class: "vault-main" }, [
       el("button", { type: "button", class: "chip", "data-testid": "destination-chip", onclick: () => { state.sheet = { kind: "destination" }; render(); } }, [
@@ -383,11 +356,6 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         el("div", { class: "tray-lbl" }, [el("b", { "data-testid": "needs-look-count" }, [`Needs a look · ${look.length}`]), el("span", {}, ["Tap to fix"])]),
         el("ul", { class: "rows" }, look.map((l) => loginRow(l, el("span", { class: "miss" }, [GAP_TAG[lookGaps(l, state.format)[0]]]), "needs-look-item")))
       ]) : null,
-      ...groups.map((group) => el("button", { type: "button", class: "merge-banner", "data-testid": "merge-suggestion", onclick: () => openMerge(group) }, [
-        el("span", { class: "two", "aria-hidden": "true" }),
-        el("span", { class: "t" }, [`${group.length} ${groupName(group)} logins look like`, el("span", {}, ["the same site"])]),
-        el("b", {}, ["Merge ›"])
-      ])),
       el("section", { class: "tray", "data-testid": "logins" }, [
         el("div", { class: "tray-lbl" }, [el("b", {}, ["Logins"]), el("span", { "data-testid": "logins-count" }, [`${complete.length} of ${vault.logins.length}`])]),
         complete.length
@@ -491,47 +459,6 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     ];
   }
 
-  const FIELD_LABEL: Record<MergeField, string> = { name: "Title", url: "Website", username: "Username", password: "Password", note: "Notes" };
-
-  function mergeSheet(s: Extract<Sheet, { kind: "merge" }>, close: () => void): (HTMLElement | null)[] {
-    const a = findLogin(s.aId);
-    const b = findLogin(s.bId);
-    if (!a || !b) return [];
-    const show = (f: MergeField, l: Login) => f === "password" ? "••••••" : f === "url" ? (hostOf(l.url) || l.url) : l[f].split("\n")[0];
-    const rows = MERGE_FIELDS.map((f) => {
-      const va = f === "url" ? hostOf(a.url) || a.url.trim() : a[f].trim();
-      const vb = f === "url" ? hostOf(b.url) || b.url.trim() : b[f].trim();
-      if (!va && !vb) return null;
-      if (va === vb) {
-        return el("div", { class: "mg-f" }, [el("span", { class: "lbl" }, [FIELD_LABEL[f]]), el("div", { class: "mg-same" }, [el("span", { class: f === "password" ? "dots" : "" }, [show(f, a)]), el("em", {}, ["Same in both"])])]);
-      }
-      const opt = (side: "a" | "b", l: Login) => {
-        const sel = s.choice[f] === side;
-        const value = l[f].trim();
-        return el("button", { type: "button", class: sel ? "mg-o sel" : "mg-o", "data-testid": "merge-opt", "data-field": f, "data-side": side, "aria-pressed": sel ? "true" : "false", onclick: () => { s.choice[f] = side; render(); } }, [
-          el("i", { "aria-hidden": "true" }, [sel ? icon("check") : null]),
-          el("span", { class: f === "password" ? "v dots" : value ? "v" : "v muted" }, [value ? show(f, l) : "Empty"]),
-          f === "password" ? el("span", { class: "muted" }, [`· ${side.toUpperCase()}`]) : null
-        ]);
-      };
-      return el("div", { class: "mg-f" }, [el("span", { class: "lbl" }, [FIELD_LABEL[f]]), el("div", { class: "mg-opts" }, [opt("a", a), opt("b", b)])]);
-    });
-    return [
-      el("div", { class: "sheet-head" }, [el("h2", {}, [`Merge ${groupName([a, b])}`]), el("button", { type: "button", class: "x", "aria-label": "Close", onclick: close }, [icon("close")])]),
-      el("div", { class: "mg-hero", "aria-hidden": "true" }, [
-        el("div", { class: "mg-ring a" }, [el("b", {}, ["A"]), el("span", {}, [resolvedTitle(a) || "Untitled"])]),
-        el("div", { class: "mg-ring b" }, [el("b", {}, ["B"]), el("span", {}, [resolvedTitle(b) || "Untitled"])]),
-        el("div", { class: "mg-core" }, ["1"])
-      ]),
-      el("p", { class: "mg-help" }, ["One login will be saved. The other will be removed."]),
-      ...rows,
-      el("div", { class: "acts" }, [
-        el("button", { type: "button", class: "ghost", "data-testid": "merge-cancel", onclick: close }, ["Cancel"]),
-        el("button", { type: "button", class: "cta", "data-testid": "merge-confirm", onclick: () => confirmMerge(a.id, b.id, s.choice) }, ["Merge"])
-      ])
-    ];
-  }
-
   function needsLookSheet(close: () => void): (HTMLElement | null)[] {
     const vault = state.vault!;
     const look = needsLook(vault.logins, state.format);
@@ -556,6 +483,61 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     ];
   }
 
+  function extrasSheet(s: Extract<Sheet, { kind: "extras" }>, close: () => void): (HTMLElement | null)[] {
+    const vault = state.vault!;
+    const items: { heading: string; lines: string[] }[] = [];
+    let title = "";
+    let fileName = "";
+    let csv = "";
+    let help = "";
+    if (s.which === "addresses") {
+      title = plural(vault.addresses.length, "Address", "Addresses");
+      fileName = "samsung-pass-addresses.csv";
+      csv = addressesToCsv(vault.addresses);
+      help = "This saves a plain-text CSV of these addresses — not your passwords.";
+      for (const a of vault.addresses) {
+        const city = [a.city, a.state].filter(Boolean).join(", ");
+        const locality = [city, a.postal].filter(Boolean).join(" ");
+        items.push({
+          heading: a.name || a.street || "Address",
+          lines: [a.company, a.street, locality, a.country, a.phone, a.email].filter(Boolean)
+        });
+      }
+    } else if (s.which === "cards") {
+      title = plural(vault.cards.length, "Card");
+      fileName = "samsung-pass-cards.csv";
+      csv = cardsToCsv(vault.cards);
+      help = "This saves a plain-text CSV of these cards — not your login passwords.";
+      for (const c of vault.cards) {
+        const last4 = c.number.replace(/\D/g, "").slice(-4);
+        const exp = c.expMonth && c.expYear ? `Expires ${c.expMonth}/${c.expYear}` : "";
+        items.push({
+          heading: c.nickname || "Card",
+          lines: [c.holder, last4 ? `••${last4}` : "", exp].filter(Boolean)
+        });
+      }
+    } else {
+      title = plural(vault.notes.length, "Note");
+      fileName = "samsung-pass-notes.csv";
+      csv = notesToCsv(vault.notes);
+      help = "This saves a plain-text CSV of these notes.";
+      for (const n of vault.notes) {
+        items.push({ heading: n.title.trim() || "Note", lines: n.body ? [n.body] : [] });
+      }
+    }
+    return [
+      el("h2", { class: "title" }, [title]),
+      el("ul", { class: "extra-list", "data-testid": "extras-list" }, items.map((item) =>
+        el("li", {}, [el("b", {}, [item.heading]), ...item.lines.map((line) => el("p", {}, [line]))])
+      )),
+      el("p", { class: "muted" }, [help]),
+      el("div", { class: "acts" }, [
+        el("button", { type: "button", class: "ghost", onclick: close }, ["Close"]),
+        el("button", { type: "button", class: "cta", "data-testid": "confirm-save", onclick: () => void confirmSave(fileName, csv, false) }, ["Save CSV"])
+      ])
+    ];
+  }
+
   function sheet(): HTMLElement | null {
     const s = state.sheet;
     if (!s) return null;
@@ -563,7 +545,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     let body: (HTMLElement | null)[];
     if (s.kind === "needs-look") body = needsLookSheet(close);
     else if (s.kind === "edit") body = editSheet(s, close);
-    else if (s.kind === "merge") body = mergeSheet(s, close);
+    else if (s.kind === "extras") body = extrasSheet(s, close);
     else if (s.kind === "destination") body = destinationSheet(close);
     else if (s.kind === "save") {
       body = [
