@@ -235,6 +235,26 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     render();
   }
 
+  /** Remove every needs-look login (Other save warning). Undo restores the prior list. */
+  function deleteNeedsLookLogins() {
+    const vault = state.vault;
+    if (!vault) return;
+    const look = needsLook(vault.logins, state.format);
+    if (!look.length) return;
+    const ids = new Set(look.map((l) => l.id));
+    const before = vault.logins.slice();
+    vault.logins = vault.logins.filter((l) => !ids.has(l.id));
+    state.toast = {
+      text: `Deleted ${plural(look.length, "login")}`,
+      undo: () => { vault.logins = before.slice(); }
+    };
+    if (vault.logins.length) openSaveSheet();
+    else {
+      state.sheet = null;
+      render();
+    }
+  }
+
   function openMerge(group: Login[]) {
     // A is the more complete record (fewest gaps), so defaults keep the better data.
     const [a, b] = [...group].sort((x, y) => lookGaps(x, state.format).length - lookGaps(y, state.format).length);
@@ -558,22 +578,40 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const look = needsLook(vault.logins, state.format);
     const n = look.length;
     const websiteOnly = look.every((l) => lookGaps(l, state.format).every((g) => g === "url"));
+    const isOther = state.format === "other";
     const CAP = 50;
+    const otherCopy = n === 1
+      ? "This login is missing a title, username, or website. Add the missing labels, delete those logins, or keep the fields blank."
+      : "These logins are missing a title, username, or website. Add the missing labels, delete those logins, or keep the fields blank.";
+    const namedCopy = websiteOnly
+      ? state.format === "google"
+        ? "These have no website. Add one, delete them, or save anyway — Google lists them as “no url”."
+        : "These have no website. Add one, delete them, or save anyway with the website left blank."
+      : "Add the missing title or username, or delete the login, before saving.";
+    const addOrReview = () => {
+      if (isOther && n > 1) {
+        state.sheet = { kind: "look" };
+        render();
+      } else openEdit(look[0]);
+    };
     return [
       el("h2", { class: "title" }, [`${plural(n, "login")} ${n === 1 ? "needs" : "need"} a look`]),
-      el("p", {}, [websiteOnly
-        ? state.format === "google"
-          ? "These have no website. Add one, delete them, or save anyway — Google lists them as “no url”."
-          : "These have no website. Add one, delete them, or save anyway with the website left blank."
-        : "Add the missing title or username, or delete the login, before saving."]),
+      el("p", {}, [isOther ? otherCopy : namedCopy]),
       el("ul", { class: "gap-list", "data-testid": "needs-look-list" }, look.slice(0, CAP).map((l) =>
         el("li", {}, [el("span", { class: "strong" }, [resolvedTitle(l) || "Untitled login"]), el("span", { class: "muted" }, [` — no ${lookGaps(l, state.format).map((g) => GAP_LABEL[g]).join(", no ")}`])]))),
       n > CAP ? el("p", { class: "muted" }, [`…and ${n - CAP} more`]) : null,
-      el("div", { class: "acts stack" }, [
-        el("button", { type: "button", class: "cta", "data-testid": "review", onclick: () => openEdit(look[0]) }, ["Review"]),
-        websiteOnly ? el("button", { type: "button", class: "ghost", "data-testid": "save-anyway", onclick: openSaveSheet }, ["Save anyway"]) : null,
-        el("button", { type: "button", class: "ghost", onclick: close }, ["Cancel"])
-      ])
+      el("div", { class: "acts stack" }, isOther
+        ? [
+          el("button", { type: "button", class: "cta", "data-testid": "add", onclick: addOrReview }, ["Add"]),
+          el("button", { type: "button", class: "danger-btn", "data-testid": "delete-all", onclick: deleteNeedsLookLogins }, ["Delete all"]),
+          el("button", { type: "button", class: "ghost", "data-testid": "keep-blank", onclick: openSaveSheet }, ["Keep them blank"]),
+          el("button", { type: "button", class: "ghost", onclick: close }, ["Cancel"])
+        ]
+        : [
+          el("button", { type: "button", class: "cta", "data-testid": "review", onclick: () => openEdit(look[0]) }, ["Review"]),
+          websiteOnly ? el("button", { type: "button", class: "ghost", "data-testid": "save-anyway", onclick: openSaveSheet }, ["Save anyway"]) : null,
+          el("button", { type: "button", class: "ghost", onclick: close }, ["Cancel"])
+        ])
     ];
   }
 

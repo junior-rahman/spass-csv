@@ -1,4 +1,4 @@
-import { csvUrl, csvUsername, displayTitle } from "./model";
+import { csvUrl, csvUsername, displayTitle, resolvedTitle } from "./model";
 import type { Address, Card, FormatId, Login, Note, SpassTable } from "./types";
 
 const FORMULA_LEAD = /^[=+\-@\t\r]/;
@@ -39,9 +39,10 @@ export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): s
     );
   }
   if (format === "other") {
+    // Keep blank Title / Website / Username as empty cells — no placeholders.
     return toCsv(
       ["Title", "Website", "Username", "Password", "Notes"],
-      logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, l.note]),
+      logins.map((l) => [resolvedTitle(l), csvUrl(l, format), l.username.trim(), l.password, l.note]),
       ["Password"],
       false
     );

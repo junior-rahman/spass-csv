@@ -21,6 +21,7 @@ Not affiliated with Samsung.
    - If two logins share the same website (or app) **and** the same username, a merge suggestion appears. You pick which fields to keep.
    - Addresses, cards, and notes open from tiles. You can preview them, save a separate CSV, or delete an item (with undo). Bitwarden notes stay in the main file.
 6. Tap **Save CSV** and confirm. A step-by-step guide for your password manager appears — follow it to import.
+   - When saving to **Other**, missing titles, usernames, or websites warn first. You can **Add** the missing labels, **Delete all** those incomplete logins, or **Keep them blank** (empty CSV cells — no placeholders).
 7. **Delete the CSV** and the `.spass` file after importing. The CSV holds your passwords in plain text.
 
 To start over with a different export, tap **Change file**. Leaving the app also clears unlocked data from memory.

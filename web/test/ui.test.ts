@@ -415,4 +415,65 @@ describe("Save CSV", () => {
     await vi.waitFor(() => expect(document.querySelector("[data-testid=sheet-import-guide]")).not.toBeNull());
     expect(q(document.body, "[data-testid=sheet-import-guide]").textContent).toContain("Import into your password manager");
   });
+
+  it("Other save warning offers Add, Delete all, Keep them blank (no forced fill)", async () => {
+    localStorage.setItem(FORMAT_KEY, "other");
+    const { root, saves } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=save]");
+    const sheet = q(document.body, "[data-testid=sheet-needs-look]");
+    expect(sheet.textContent).toMatch(/missing a title, username, or website/i);
+    expect(sheet.querySelector("[data-testid=add]")).not.toBeNull();
+    expect(sheet.querySelector("[data-testid=delete-all]")).not.toBeNull();
+    expect(sheet.querySelector("[data-testid=keep-blank]")).not.toBeNull();
+    expect(sheet.querySelector("[data-testid=save-anyway]")).toBeNull();
+    expect(sheet.querySelector("[data-testid=incomplete-keep]")).toBeNull();
+    expect(saves).toHaveLength(0);
+  });
+
+  it("Other Keep them blank writes passwords.csv with empty Title/Website/Username cells", async () => {
+    localStorage.setItem(FORMAT_KEY, "other");
+    const { root, saves } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=save]");
+    click(document.body, "[data-testid=keep-blank]");
+    expect(saves).toHaveLength(0);
+    click(document.body, "[data-testid=confirm-save]");
+    await vi.waitFor(() => expect(saves).toHaveLength(1));
+    expect(saves[0].fileName).toBe("passwords.csv");
+    const lines = saves[0].csv.replace(/^\uFEFF/, "").trim().split("\r\n");
+    expect(lines[0]).toBe("Title,Website,Username,Password,Notes");
+    expect(saves[0].csv).not.toMatch(/no url|no title|no username/);
+    // Fully blank grove row: empty title, website, username — password only.
+    expect(lines.some((line) => line.startsWith(",,,lost-pass,"))).toBe(true);
+    expect(saves[0].csv).not.toContain("JBSWY3DPEHPK3PXP");
+  });
+
+  it("Other Delete all removes incomplete logins then opens save; Undo restores them", async () => {
+    localStorage.setItem(FORMAT_KEY, "other");
+    const { root, saves } = setup();
+    await unlock(root, await groveExport());
+    const beforeIncomplete = q(root, "[data-testid=needs-look-count]").textContent!;
+    expect(beforeIncomplete).toMatch(/Needs a look · \d+/);
+    click(root, "[data-testid=save]");
+    click(document.body, "[data-testid=delete-all]");
+    expect(document.querySelector("[data-testid=sheet-save]")).not.toBeNull();
+    expect(root.querySelector("[data-testid=needs-look-count]")).toBeNull();
+    expect(saves).toHaveLength(0);
+    click(document.body, "[data-testid=undo]");
+    expect(document.querySelector("[data-testid=snackbar]")).toBeNull();
+    expect(q(root, "[data-testid=needs-look-count]").textContent).toBe(beforeIncomplete);
+    expect(saves).toHaveLength(0);
+  });
+
+  it("Other Add opens the look list when several logins need a look", async () => {
+    localStorage.setItem(FORMAT_KEY, "other");
+    const { root, saves } = setup();
+    await unlock(root, await groveExport());
+    click(root, "[data-testid=save]");
+    click(document.body, "[data-testid=add]");
+    expect(document.querySelector("[data-testid=sheet-look]")).not.toBeNull();
+    expect(document.querySelector("[data-testid=look-list]")).not.toBeNull();
+    expect(saves).toHaveLength(0);
+  });
 });
