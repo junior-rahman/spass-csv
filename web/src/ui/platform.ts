@@ -7,6 +7,8 @@ interface WebMessageBridge {
 export interface Platform {
   /** Resolves true only after the file was actually written. */
   save(fileName: string, csv: string): Promise<boolean>;
+  /** Leave the app after the user confirmed "Leave and clear?" (Android: hand Back to the system). */
+  leave?(): void;
 }
 
 function bridge(): WebMessageBridge | null {
@@ -39,6 +41,9 @@ const androidPlatform = (b: WebMessageBridge): Platform => ({
       };
       b.postMessage(JSON.stringify({ type: "save", fileName, csv }));
     });
+  },
+  leave() {
+    b.postMessage(JSON.stringify({ type: "leave" }));
   }
 });
 

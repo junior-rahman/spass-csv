@@ -28,6 +28,9 @@ if (!/applicationId = "com.jrrahman.passtocsv"/.test(gradle)) fail.push("applica
 if (!existsSync("android/app/src/main/res/values-night/themes.xml")) fail.push("night theme missing");
 if (!activity.includes("setOnApplyWindowInsetsListener") || !activity.includes("enableEdgeToEdge")) fail.push("targetSdk 35+ is edge-to-edge: MainActivity must pad the WebView by system-bar/IME insets");
 if (!activity.includes("OnBackPressedCallback") || !activity.includes("spccBack")) fail.push("Back must close open sheets via window.spccBack before exiting");
+if (/isSpassUri\(/.test(activity)) fail.push("non-.spass picks must reach the page so it can show an error (no silent drop in Kotlin)");
+if (!/"leave"/.test(activity)) fail.push("Back confirm: MainActivity must handle the page's {type:\"leave\"} message");
+if (!/androidx\.fragment:fragment/.test(gradle)) fail.push("declare androidx.fragment explicitly (Play flags the transitive fragment 1.0.0)");
 if (!/deleteDocument/.test(activity)) fail.push("failed SAF writes must delete the empty document");
 const manifestCfg = manifest.match(/android:configChanges="([^"]+)"/)?.[1] ?? "";
 for (const c of ["screenSize", "smallestScreenSize", "screenLayout", "orientation"]) if (!manifestCfg.split("|").includes(c)) fail.push(`configChanges must include ${c} (foldables / multi-window must not recreate the WebView and drop the vault)`);

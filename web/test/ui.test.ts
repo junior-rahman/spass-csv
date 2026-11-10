@@ -46,6 +46,7 @@ async function choose(root: HTMLElement, password: string, fileName = "export.sp
   const input = q<HTMLInputElement>(root, "#spass-file");
   Object.defineProperty(input, "files", { value: [file], configurable: true });
   input.dispatchEvent(new Event("change"));
+  await vi.waitFor(() => expect(root.querySelector("#spass-password")).not.toBeNull());
   const pw = q<HTMLInputElement>(root, "#spass-password");
   pw.value = password;
   pw.dispatchEvent(new Event("input"));
@@ -82,12 +83,13 @@ describe("staged flow", () => {
     expectNoBannedChrome(root);
   });
 
-  it("file input accepts only .spass and rejects other extensions", () => {
+  it("file input accepts only .spass and rejects other extensions", async () => {
     const { root } = setup();
     const input = q<HTMLInputElement>(root, "#spass-file");
     expect(input.getAttribute("accept")).toBe(".spass");
     Object.defineProperty(input, "files", { value: [new File(["nope"], "notes.txt")], configurable: true });
     input.dispatchEvent(new Event("change"));
+    await vi.waitFor(() => expect(root.querySelector("[data-testid=file-error]")).not.toBeNull());
     expect(root.querySelector("#spass-password")).toBeNull();
     expect(q(root, ".error").textContent).toMatch(/\.spass/);
     expect(isSpassFileName("export.spass")).toBe(true);

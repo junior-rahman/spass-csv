@@ -31,6 +31,7 @@ async function choose(root: HTMLElement, content?: string, size?: number) {
   const input = q<HTMLInputElement>(root, "#spass-file");
   Object.defineProperty(input, "files", { value: [file], configurable: true });
   input.dispatchEvent(new Event("change"));
+  await vi.waitFor(() => expect(root.querySelector("#spass-password")).not.toBeNull());
   const pw = q<HTMLInputElement>(root, "#spass-password");
   pw.value = TEST_PASSWORD;
   pw.dispatchEvent(new Event("input"));
@@ -74,9 +75,13 @@ describe("privacy races", () => {
 
   it("refuses an absurdly large file without reading it", async () => {
     const root = setup();
-    await choose(root, "x", MAX_SPASS_BYTES + 1);
-    click(root, "[data-testid=convert]");
+    const file = new File(["x"], "Pass_20261110.spass");
+    Object.defineProperty(file, "size", { value: MAX_SPASS_BYTES + 1 });
+    const input = q<HTMLInputElement>(root, "#spass-file");
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    input.dispatchEvent(new Event("change"));
     await vi.waitFor(() => expect(root.querySelector(".error")?.textContent).toMatch(/too large/i));
+    expect(root.querySelector("#spass-password")).toBeNull();
   });
 });
 
@@ -110,7 +115,9 @@ describe("Android back / Escape", () => {
     expect(document.querySelector("[data-testid=sheet-merges]")).not.toBeNull();
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(document.querySelector(".sheet")).toBeNull();
-    expect(back()).toBe(false);
+    // 2.0.20: Back from the vault asks "Leave and clear?" instead of exiting straight away.
+    expect(back()).toBe(true);
+    expect(document.querySelector("[data-testid=sheet-leave]")).not.toBeNull();
   });
 });
 

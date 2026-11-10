@@ -41,6 +41,11 @@ export function duplicateGroups(logins: Login[]): Login[][] {
   return [...map.values()].filter((g) => g.length > 1);
 }
 
+/** Stable identity of a duplicate group (same site + same username), e.g. for a session Dismiss. */
+export function groupKey(group: Login[]): string {
+  return `${siteKey(group[0])}\n${usernameKey(group[0])}`;
+}
+
 /** Display name for a duplicate group: "amazon.com". */
 export function groupName(group: Login[]): string {
   return siteKey(group[0]) || resolvedTitle(group[0]);

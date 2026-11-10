@@ -6,7 +6,6 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.os.Build
-import android.provider.OpenableColumns
 import android.os.Bundle
 import android.graphics.Color
 import android.view.WindowManager
@@ -48,6 +47,21 @@ class MainActivity : ComponentActivity() {
     private var pendingCsv: String? = null
     private var pendingReply: JavaScriptReplyProxy? = null
 
+    private val backCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            webView.evaluateJavascript("(window.spccBack && window.spccBack()) ? 1 : 0") { handled ->
+                if (handled != "1") systemBack()
+            }
+        }
+    }
+
+    /** Let Android handle Back (finish / move to background) without re-entering the page. */
+    private fun systemBack() {
+        backCallback.isEnabled = false
+        onBackPressedDispatcher.onBackPressed()
+        backCallback.isEnabled = true
+    }
+
     private val assetLoader by lazy {
         WebViewAssetLoader.Builder()
             .setDomain(ASSET_HOST)
@@ -65,7 +79,9 @@ class MainActivity : ComponentActivity() {
 
     private val pickFile = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val uri = result.data?.data
-        val ok = result.resultCode == Activity.RESULT_OK && uri != null && isSpassUri(uri)
+        // Hand every pick to the page: it checks the name and contents and shows a clear error
+        // for anything that isn't a Samsung Pass export (never a silent drop).
+        val ok = result.resultCode == Activity.RESULT_OK && uri != null
         fileCallback?.onReceiveValue(if (ok) arrayOf(uri!!) else null)
         fileCallback = null
     }
@@ -106,18 +122,9 @@ class MainActivity : ComponentActivity() {
             WindowInsetsCompat.CONSUMED
         }
 
-        // Back closes the open sheet (or leaves the password step) before it exits the app.
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                webView.evaluateJavascript("(window.spccBack && window.spccBack()) ? 1 : 0") { handled ->
-                    if (handled != "1") {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
-                        isEnabled = true
-                    }
-                }
-            }
-        })
+        // Back closes the open sheet (or leaves the password step); from the vault the page asks
+        // "Leave and clear?" and posts {type:"leave"} when confirmed.
+        onBackPressedDispatcher.addCallback(this, backCallback)
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -151,7 +158,7 @@ class MainActivity : ComponentActivity() {
                 fileCallback?.onReceiveValue(null)
                 fileCallback = callback
                 // Restored 2.0.2 (abbfbc9) .spass MIME filter: octet-stream + application/x-spass +
-                // application/spass. isSpassUri still rejects anything not named .spass.
+                // application/spass. The page validates whatever is picked and explains rejections.
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                     addCategory(Intent.CATEGORY_OPENABLE)
                     type = "application/octet-stream"
@@ -173,6 +180,10 @@ class MainActivity : ComponentActivity() {
             WebViewCompat.addWebMessageListener(webView, "passBridge", setOf(ASSET_ORIGIN)) { _, message, sourceOrigin, isMainFrame, reply ->
                 if (!isMainFrame || sourceOrigin.toString() != ASSET_ORIGIN) return@addWebMessageListener
                 val json = runCatching { JSONObject(message.data ?: "") }.getOrNull() ?: return@addWebMessageListener
+                if (json.optString("type") == "leave") {
+                    systemBack()
+                    return@addWebMessageListener
+                }
                 if (json.optString("type") != "save") return@addWebMessageListener
                 val name = json.optString("fileName").takeIf { SAFE_NAME.matches(it) } ?: "samsung-pass.csv"
                 // A second save while one is open: fail the older one so its promise settles now.
@@ -254,17 +265,6 @@ class MainActivity : ComponentActivity() {
             if (ok) return true
         }
         return false
-    }
-
-    private fun isSpassUri(uri: Uri): Boolean {
-        val name = runCatching {
-            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getString(0) else null
-            }
-        }.getOrNull()
-        if (name?.endsWith(".spass", ignoreCase = true) == true) return true
-        val segment = uri.lastPathSegment?.substringAfterLast('/') ?: return false
-        return segment.endsWith(".spass", ignoreCase = true)
     }
 
     companion object {

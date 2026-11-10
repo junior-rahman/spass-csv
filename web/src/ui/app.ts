@@ -12,6 +12,9 @@ import {
   cardsToCsv,
   defaultMergeChoice,
   duplicateGroups,
+  groupKey,
+  NOT_SPASS_NAME,
+  spassShapeError,
   fileNameFor,
   groupName,
   lookGaps,
@@ -48,6 +51,7 @@ type Sheet =
   | { kind: "edit"; id: string; draft: LoginEdit; showPassword: boolean; after?: AfterEdit; browseQuery?: string }
   | { kind: "merges" }
   | { kind: "merge"; aId: string; bId: string; choice: MergeChoice; fromList?: boolean }
+  | { kind: "leave" }
   | { kind: "extras"; which: "cards" | "notes" | "addresses" };
 
 interface Toast { text: string; undo?: () => void }
@@ -67,6 +71,8 @@ interface State {
   externalPending: boolean;
   /** Element id to focus after the next paint (e.g. the gap field in the edit sheet). */
   focusNext: string;
+  /** Merge suggestions dismissed this session (groupKey); cleared with the vault. */
+  dismissed: Set<string>;
 }
 
 export interface MountOptions {
@@ -90,7 +96,8 @@ function freshState(format: FormatId): State {
     sheet: null,
     toast: null,
     externalPending: false,
-    focusNext: ""
+    focusNext: "",
+    dismissed: new Set()
   };
 }
 
@@ -162,6 +169,8 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   const canConvert = () => state.file !== null && state.password.length > 0 && state.status !== "working";
   const stage = (): Stage => state.vault ? "vault" : state.status === "working" ? "unlocking" : state.file ? "password" : "home";
   const findLogin = (id: string) => state.vault?.logins.find((l) => l.id === id) ?? null;
+  /** Duplicate groups still suggested (not dismissed this session). */
+  const mergeGroups = (): Login[][] => state.vault ? duplicateGroups(state.vault.logins).filter((g) => !state.dismissed.has(groupKey(g))) : [];
 
   async function convert() {
     if (!canConvert() || !state.file) return;
@@ -286,7 +295,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   /** One suggestion opens its merge preview; several open the list. */
   function openMergeSuggestions() {
-    const groups = state.vault ? duplicateGroups(state.vault.logins) : [];
+    const groups = mergeGroups();
     if (groups.length === 1) openMerge(groups[0]);
     else if (groups.length > 1) { state.sheet = { kind: "merges" }; render(); }
   }
@@ -300,12 +309,30 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const merged = mergeLogins(a, b, choice);
     vault.logins = vault.logins.filter((l) => l.id !== bId).map((l) => (l.id === aId ? merged : l));
     // From the list, go back to it while suggestions remain.
-    state.sheet = fromList && duplicateGroups(vault.logins).length ? { kind: "merges" } : null;
+    state.sheet = fromList && mergeGroups().length ? { kind: "merges" } : null;
     state.toast = {
       text: `Merged ${resolvedTitle(merged) || "login"}`,
       undo: () => { vault.logins = before.slice(); }
     };
     render();
+  }
+
+  /** Hide one merge suggestion for this session (Undo brings it back). */
+  function dismissMerge(group: Login[], fromList = false) {
+    const key = groupKey(group);
+    const dismissed = state.dismissed;
+    dismissed.add(key);
+    state.sheet = fromList && mergeGroups().length ? { kind: "merges" } : null;
+    state.toast = {
+      text: `Dismissed ${groupName(group)}`,
+      undo: () => { dismissed.delete(key); }
+    };
+    render();
+  }
+
+  /** The duplicate group a merge preview came from. */
+  function groupOf(aId: string, bId: string): Login[] | null {
+    return state.vault ? duplicateGroups(state.vault.logins).find((g) => g.some((l) => l.id === aId) && g.some((l) => l.id === bId)) ?? null : null;
   }
 
   function spliceExtra<T extends { id: string }>(list: T[], id: string, labelOf: (item: T) => string) {
@@ -342,7 +369,15 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   }
 
   function fieldError(field: "file" | "password"): HTMLElement | null {
-    return state.error?.field === field ? el("p", { class: "error", role: "alert", id: `${field}-error` }, [state.error.message]) : null;
+    if (state.error?.field !== field) return null;
+    if (field === "file") {
+      // Ember caution callout on the file stage: wrong file type, damaged export, too large.
+      return el("div", { class: "file-alert", role: "alert", id: "file-error", "data-testid": "file-error" }, [
+        icon("info"),
+        el("p", { class: "error" }, [state.error.message])
+      ]);
+    }
+    return el("p", { class: "error", role: "alert", id: `${field}-error` }, [state.error.message]);
   }
 
   function fileInput(): HTMLInputElement {
@@ -356,19 +391,32 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     input.addEventListener("change", () => {
       state.externalPending = false;
       const picked = input.files?.[0] ?? null;
-      if (picked && !isSpassFileName(picked.name)) {
-        state.file = null;
-        state.error = { field: "file", message: "Choose a .spass export from Samsung Pass." };
-        input.value = "";
-      } else {
-        state.file = picked;
-        state.password = "";
-        state.error = null;
-        if (picked) state.focusNext = "spass-password";
-      }
-      render();
+      input.value = "";
+      if (picked) void pickFile(picked);
     });
     return input;
+  }
+
+  /** Check the picked file before asking for a password; never fail silently. */
+  async function pickFile(picked: File) {
+    const s = state;
+    let problem: string | null;
+    if (picked.size > MAX_SPASS_BYTES) problem = TOO_LARGE;
+    else {
+      try { problem = spassShapeError(await readFileText(picked), picked.name); }
+      catch { problem = isSpassFileName(picked.name) ? "Couldn't read this file. Pick it again, or export again from Samsung Pass." : NOT_SPASS_NAME; }
+    }
+    if (state !== s) return;
+    if (problem) {
+      state.file = null;
+      state.error = { field: "file", message: problem };
+    } else {
+      state.file = picked;
+      state.password = "";
+      state.error = null;
+      state.focusNext = "spass-password";
+    }
+    render();
   }
 
   // ---------- stages ----------
@@ -487,7 +535,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const heroMeta = complete.length === 0
       ? (vault.logins.length ? "Fix the logins that need a look." : "No logins in this export.")
       : `across ${plural(places, "place")}`;
-    const groups = duplicateGroups(vault.logins);
+    const groups = mergeGroups();
     return el("div", { class: "vault-main" }, [
       el("button", { type: "button", class: "chip", "data-testid": "destination-chip", onclick: () => { state.sheet = { kind: "destination" }; render(); } }, [
         el("span", { class: "dot", "aria-hidden": "true" }), "Save for ", el("b", {}, [formatInfo().label]), icon("chevron_right")
@@ -694,12 +742,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       el("div", { class: "acts" }, [
         el("button", { type: "button", class: "ghost", "data-testid": "merge-cancel", onclick: s.fromList ? () => { state.sheet = { kind: "merges" }; render(); } : close }, [s.fromList ? "Back" : "Cancel"]),
         el("button", { type: "button", class: "cta", "data-testid": "merge-confirm", onclick: () => confirmMerge(a.id, b.id, s.choice, s.fromList) }, ["Merge"])
-      ])
+      ]),
+      el("button", { type: "button", class: "text-btn mg-dismiss-wide", "data-testid": "merge-dismiss", onclick: () => dismissMerge(groupOf(a.id, b.id) ?? [a, b], s.fromList) }, ["Not the same login · Dismiss"])
     ];
   }
 
   function mergesSheet(close: () => void): (HTMLElement | null)[] {
-    const groups = duplicateGroups(state.vault!.logins);
+    const groups = mergeGroups();
     return [
       el("div", { class: "sheet-head" }, [
         el("h2", {}, [groups.length ? `Possible merges · ${groups.length}` : "Possible merges"]),
@@ -707,16 +756,16 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       ]),
       el("p", { class: "mg-help" }, ["Same website or app, same username. Tap one to choose what to keep."]),
       groups.length
-        ? el("ul", { class: "rows", "data-testid": "merge-list" }, groups.map((g) => el("li", {}, [
+        ? el("ul", { class: "rows mg-rows", "data-testid": "merge-list" }, groups.map((g) => el("li", {}, [
           el("button", { type: "button", class: "row", "data-testid": "merge-item", onclick: () => openMerge(g, true) }, [
             el("span", { class: "two", "aria-hidden": "true" }),
             el("span", { class: "t" }, [
               el("b", {}, [groupName(g)]),
               el("span", {}, [`${g.length} logins · ${g.map((l) => resolvedTitle(l) || "Untitled").join(" · ")}`])
             ]),
-            el("span", { class: "mg-go" }, ["Merge"]),
-            icon("chevron_right")
-          ])
+            el("span", { class: "mg-go" }, ["Merge"])
+          ]),
+          el("button", { type: "button", class: "text-btn mg-dismiss", "data-testid": "merge-dismiss", "aria-label": `Dismiss ${groupName(g)}`, onclick: () => dismissMerge(g, true) }, ["Dismiss"])
         ])))
         : el("p", { class: "empty" }, ["No possible merges left."])
     ];
@@ -852,7 +901,21 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       return true;
     }
     if (stage() === "password") { wipe(); return true; }
+    // Leaving clears the vault: ask first.
+    if (stage() === "vault") { state.sheet = { kind: "leave" }; render(); return true; }
     return false;
+  }
+
+  function leaveSheet(close: () => void): (HTMLElement | null)[] {
+    return [
+      el("h2", { class: "title" }, ["Leave and clear?"]),
+      el("p", {}, ["Your unlocked logins are cleared from this phone's memory. The .spass file isn't changed."]),
+      state.saved ? null : el("p", { class: "strong" }, ["You haven't saved a CSV yet."]),
+      el("div", { class: "acts" }, [
+        el("button", { type: "button", class: "ghost", "data-testid": "leave", onclick: () => { wipe(); platform.leave?.(); } }, ["Leave"]),
+        el("button", { type: "button", class: "cta", "data-testid": "stay", onclick: close }, ["Stay"])
+      ])
+    ];
   }
   (globalThis as unknown as { spccBack?: () => boolean }).spccBack = goBack;
   document.addEventListener("keydown", (e) => {
@@ -872,6 +935,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     else if (s.kind === "merges") body = mergesSheet(close);
     else if (s.kind === "extras") body = extrasSheet(s, close);
     else if (s.kind === "destination") body = destinationSheet(close);
+    else if (s.kind === "leave") body = leaveSheet(close);
     else if (s.kind === "save") {
       body = [
         el("h2", { class: "title" }, ["Save plaintext CSV?"]),

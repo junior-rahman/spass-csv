@@ -18,8 +18,8 @@ android {
         applicationId = "com.jrrahman.passtocsv"
         minSdk = 29
         targetSdk = 36
-        versionCode = 37
-        versionName = "2.0.19"
+        versionCode = 38
+        versionName = "2.0.20"
     }
 
     // English-only UI: drop library translations.
@@ -63,10 +63,6 @@ android {
         includeInBundle = true
     }
 
-    // Play app-update drags in fragment 1.0.0 transitively, but no Fragment is ever used
-    // (ComponentActivity only), so the Fragment-version result-API check is a false positive.
-    lint { disable += "InvalidFragmentVersionForActivityResult" }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -75,7 +71,9 @@ android {
 }
 
 dependencies {
-    implementation("androidx.activity:activity:1.9.3")
-    implementation("androidx.webkit:webkit:1.11.0")
+    implementation("androidx.activity:activity:1.13.0")
+    implementation("androidx.webkit:webkit:1.18.0")
+    // Play app-update pulls androidx.fragment 1.0.0 transitively; pin a current fragment so the bundle ships it.
+    implementation("androidx.fragment:fragment:1.9.1")
     implementation("com.google.android.play:app-update:2.1.0")
 }

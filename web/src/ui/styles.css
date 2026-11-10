@@ -251,3 +251,15 @@ li:first-child > .row { border-top: 0; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 448px; bottom: calc(110px + env(safe-area-inset-bottom)); min-height: 54px; border-radius: 16px; background: var(--cream); color: var(--soil); display: flex; align-items: center; padding: 8px 8px 8px 16px; gap: 10px; font-size: 14.5px; font-weight: 500; box-shadow: 0 12px 32px rgba(0, 0, 0, .5); z-index: 20; }
 .toast span { flex: 1; }
 .toast button { height: 38px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--grove); color: var(--cream); font: 600 14px Outfit, sans-serif; }
+
+/* 2.0.20: file-stage caution callout (wrong file / damaged export / too large). */
+.file-alert { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 12px 14px; border-radius: 16px; text-align: left; background: color-mix(in srgb, var(--caution) 12%, var(--soil)); border: 1px solid color-mix(in srgb, var(--caution-line) 35%, transparent); color: var(--caution-text); }
+.file-alert .icon { width: 18px; height: 18px; margin-top: 1px; color: var(--caution-line); }
+.file-alert .error { margin: 0; color: var(--caution-text); font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
+
+/* 2.0.20: Dismiss on merge suggestions. */
+.mg-rows li { display: flex; align-items: center; gap: 4px; border-top: 1px solid color-mix(in srgb, var(--cream) 7%, transparent); }
+.mg-rows li:first-child { border-top: 0; }
+.mg-rows li > .row { flex: 1; min-width: 0; border-top: 0; }
+.mg-dismiss { color: var(--muted); font-size: 14px; padding: 0 8px; }
+.mg-dismiss-wide { display: flex; width: 100%; justify-content: center; margin-top: 10px; color: var(--muted); font-size: 14px; }

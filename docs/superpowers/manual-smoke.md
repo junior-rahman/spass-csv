@@ -35,7 +35,13 @@ Synthetic export: generate `/tmp/sample.spass` with `encryptSpass(samplePlaintex
 
 ## 2.0.19 audit checks (APK)
 - [ ] Status bar, navigation bar, and cutout never cover content; the keyboard never covers the password field or edit inputs.
-- [ ] Back closes an open sheet; back from Edit returns to the list; back on the password screen returns home; back from the vault leaves the app (and clears it).
+- [ ] Back closes an open sheet; back from Edit returns to the list; back on the password screen returns home; back from the vault asks "Leave and clear?" (see 2.0.20).
 - [ ] Fold/unfold or resize in split-screen while unlocked → vault still shown (no reload).
 - [ ] Cancel or fail a save (e.g. full storage) → no empty CSV left behind.
 - [ ] 360 dp wide: overview tiles, merge sheet close button, and long notes all stay on screen.
+
+## 2.0.20 checks (APK)
+- [ ] Pick a photo / PDF / .zip → home stays, Ember caution callout explains it isn't a .spass. Pick a truncated `.spass` → "isn't a valid Samsung Pass export". Pick the real export → password screen.
+- [ ] Vault, no sheet open, press Back → "Leave and clear?" sheet. Stay (or Back again) keeps the vault. Leave → app closes / goes to background; reopening shows home.
+- [ ] Possible merges list: Dismiss on a row hides it, snackbar "Dismissed …" with Undo; the overview line count drops and disappears at zero. Merge preview: "Not the same login · Dismiss" does the same. Change file forgets dismissals.
+- [ ] Play Console → App bundle explorer → dependencies list androidx.fragment 1.9.1 (no 1.0.0 warning).

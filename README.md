@@ -18,13 +18,13 @@ Not affiliated with Samsung.
 ## Use it
 
 1. In Samsung Pass: Settings → Export data. Set an export password and save the `.spass` file.
-2. Open Spcc and choose the file.
+2. Open Spcc and choose the file. If it isn't a `.spass` export (a photo, a document, a damaged or incomplete export, or a file over 64 MB), the app says so right away, before asking for a password.
 3. Type the **export** password (not your Samsung account password) and tap **Unlock**.
 4. Tap **Save for** and pick 1Password, Google Password Manager, Apple Passwords, Bitwarden, or Other (a generic `passwords.csv`).
 5. The vault shows how many logins are ready and across how many places — not the full list up front.
    - **Needs a look** — tap to add a missing title, username, or website. The app never guesses websites, and it never overwrites a real website from your export.
    - **Browse logins** — search and edit ready logins, grouped by website.
-   - If two logins share the same website (or app) **and** the same username, the overview shows one **Possible merges** line. Tap it to see each suggestion, pick which fields to keep, and Merge (with undo).
+   - If two logins share the same website (or app) **and** the same username, the overview shows one **Possible merges** line. Tap it to see each suggestion, pick which fields to keep, and Merge (with undo). Not the same login? Tap **Dismiss** in the list or the preview to hide that suggestion for this session (with undo). Dismissing never deletes anything.
    - Addresses, cards, and notes open from tiles. You can preview them, save a separate CSV, or delete an item (with undo). Bitwarden notes stay in the main file.
 6. Tap **Save CSV** and confirm. A step-by-step guide for your password manager appears — follow it to import.
    - When saving to **Other**, missing titles, usernames, or websites warn first. You can **Add** the missing labels, **Delete all** those incomplete logins, or **Keep them blank** (empty CSV cells — no placeholders).
@@ -32,8 +32,7 @@ Not affiliated with Samsung.
 
 To start over with a different export, tap **Change file**. Leaving the app also clears unlocked data from memory.
 
-- **Back** (Android button/gesture, or Esc on the web page) closes the open sheet first, steps back from an edit to the list you came from, and only then leaves the app.
-- Exports up to 64 MB are accepted; anything larger is rejected before decrypting.
+- **Back** (Android button/gesture, or Esc on the web page) closes the open sheet first and steps back from an edit to the list you came from. From the unlocked vault, Android Back asks **Leave and clear?** (**Stay** or **Leave**) before it clears the vault and leaves.
 - Websites are read as written: `www.amazon.com`, `mail.google.com`, IP addresses like `192.168.1.1:8080`, and `android://…@com.example.app` app links all map correctly.
 - CSV safety: usernames and passwords are written exactly as exported (a `+44…` phone-number username stays as-is). Other text cells that start with `=`, `+`, `-`, `@`, tab, or CR get a leading `'` so spreadsheets don't run them as formulas.
 
@@ -48,7 +47,7 @@ gradle -p android assembleRelease   # signed APK; needs JDK 17 + Android SDK 36 
 gradle -p android bundleRelease     # signed Play AAB (same signing setup)
 ```
 
-Toolchain: JDK 17, Gradle 8.13, Android Gradle Plugin 8.11.1, Kotlin 2.0.21, compileSdk/targetSdk 36, minSdk 29. The Android app draws edge-to-edge (target 36) and pads the WebView for system bars, display cutouts, and the keyboard.
+Toolchain: JDK 17, Gradle 8.13, Android Gradle Plugin 8.11.1, Kotlin 2.0.21, compileSdk/targetSdk 36, minSdk 29. AndroidX: activity 1.13.0, webkit 1.18.0, fragment 1.9.1 (declared explicitly so Play's app-update library no longer pulls fragment 1.0.0). The Android app draws edge-to-edge (target 36) and pads the WebView for system bars, display cutouts, and the keyboard.
 
 Sources live in `web/src` (TypeScript) and `android/` (Kotlin). Never edit the generated root files by hand.
 
