@@ -26,6 +26,11 @@ if (!/allowFileAccess = false/.test(activity) || !/allowContentAccess = false/.t
 if (!/isMinifyEnabled = true/.test(gradle)) fail.push("release must enable R8");
 if (!/applicationId = "com.jrrahman.passtocsv"/.test(gradle)) fail.push("applicationId must stay com.jrrahman.passtocsv");
 if (!existsSync("android/app/src/main/res/values-night/themes.xml")) fail.push("night theme missing");
+if (!activity.includes("setOnApplyWindowInsetsListener") || !activity.includes("enableEdgeToEdge")) fail.push("targetSdk 35+ is edge-to-edge: MainActivity must pad the WebView by system-bar/IME insets");
+if (!activity.includes("OnBackPressedCallback") || !activity.includes("spccBack")) fail.push("Back must close open sheets via window.spccBack before exiting");
+if (!/deleteDocument/.test(activity)) fail.push("failed SAF writes must delete the empty document");
+const manifestCfg = manifest.match(/android:configChanges="([^"]+)"/)?.[1] ?? "";
+for (const c of ["screenSize", "smallestScreenSize", "screenLayout", "orientation"]) if (!manifestCfg.split("|").includes(c)) fail.push(`configChanges must include ${c} (foldables / multi-window must not recreate the WebView and drop the vault)`);
 if (existsSync("version.json")) fail.push("version.json updater manifest must be deleted");
 
 if (fail.length) {

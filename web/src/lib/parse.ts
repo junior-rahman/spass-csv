@@ -59,10 +59,24 @@ function readHeader(lines: string[]): { version: string; dataTypes: string[]; re
   return { version: first, dataTypes: parseDataTypes(second), rest: lines.slice(2) };
 }
 
+/** Toggles quote state for each unescaped `"` ("" toggles twice, so parity is enough). */
+function quoteOpenAfter(line: string, open: boolean): boolean {
+  let state = open;
+  for (const ch of line) if (ch === '"') state = !state;
+  return state;
+}
+
+/** Splits on `next_table`, quote-aware: a quoted field may span lines (blank lines, indentation, even "next_table"). */
 function splitTables(lines: string[]): string[][] {
   const tables: string[][] = [];
   let current: string[] = [];
+  let open = false;
   for (const raw of lines) {
+    if (open) {
+      current[current.length - 1] += `\n${raw}`;
+      open = quoteOpenAfter(raw, true);
+      continue;
+    }
     const line = raw.trim();
     if (!line) continue;
     if (line === "next_table") {
@@ -71,7 +85,9 @@ function splitTables(lines: string[]): string[][] {
       continue;
     }
     if (current.length === 0 && !line.includes(";")) continue;
-    current.push(line);
+    open = quoteOpenAfter(line, false);
+    // Keep trailing spaces that belong to a quoted field continuing on the next line.
+    current.push(open ? raw.trimStart() : line);
   }
   if (current.length) tables.push(current);
   return tables;

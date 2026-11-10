@@ -24,7 +24,7 @@ const styles = (await transform(css, { loader: "css", minify: true })).code;
 const template = readFileSync("web/index.template.html", "utf8");
 
 const page = (csp, script) =>
-  template.replace("%CSP%", csp).replace("%STYLES%", styles.trimEnd()).replace("%SCRIPT%", script);
+  template.replace("%CSP%", () => csp).replace("%STYLES%", () => styles.trimEnd()).replace("%SCRIPT%", () => script); // function replacers: JS may contain $' / $& patterns
 
 const linked = page(`${BASE_CSP}; script-src 'self'`, '<script src="app.js"></script>');
 const hash = createHash("sha256").update(js).digest("base64");

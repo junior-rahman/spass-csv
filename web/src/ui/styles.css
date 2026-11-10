@@ -98,7 +98,7 @@ button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px so
 .vault-head .t b { display: block; font-size: 15px; font-weight: 600; }
 .vault-head .t span { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vault-head .icon-btn { width: 40px; }
-.vault-main { flex: 1; padding: 6px 20px 24px; }
+.vault-main { flex: 1; min-width: 0; padding: 6px 20px 24px; overflow-wrap: anywhere; }
 .ov-hero { position: relative; overflow: hidden; margin: 16px 0 6px; padding: 18px 4px 12px; }
 .ov-hero .ring-field { right: -36px; top: -54px; width: 200px; height: 200px; }
 /* Soft glow, fully transparent by 46px from centre: the hero clips the ring field 46px above its centre,
@@ -150,10 +150,10 @@ li:first-child > .row { border-top: 0; }
 .two { position: relative; width: 38px; height: 26px; flex: none; }
 .two::before, .two::after { content: ""; position: absolute; top: 0; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--olive); }
 .two::before { left: 0; } .two::after { left: 12px; background: color-mix(in srgb, var(--olive) 25%, transparent); }
-.tiles { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.tile { min-height: 56px; border-radius: 18px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; text-align: left; color: var(--muted); }
-.tile b { display: block; font-size: 14.5px; font-weight: 500; color: var(--cream); }
-.tile .t { min-width: 0; } .tile .t span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tiles { margin-top: 10px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tile { min-width: 0; min-height: 56px; border-radius: 18px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); font-size: 12.5px; text-align: left; color: var(--muted); }
+.tile b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14.5px; font-weight: 500; color: var(--cream); }
+.tile .t { min-width: 0; flex: 1; } .tile .t span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tile .glyph { width: 34px; height: 34px; flex: none; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--cream) 9%, var(--soil)); color: var(--cream); }
 .tile .glyph .icon { width: 18px; height: 18px; }
 .reminder { margin-top: 14px; font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: flex-start; text-align: left; }
@@ -163,10 +163,10 @@ li:first-child > .row { border-top: 0; }
 
 /* Sheets */
 .scrim { position: fixed; inset: 0; background: rgba(8, 7, 6, .62); z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
-.sheet { width: 100%; max-width: 480px; max-height: 92vh; max-height: 92dvh; overflow-y: auto; background: var(--sheet); border-radius: 28px 28px 0 0; border-top: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); padding: 10px 20px calc(28px + env(safe-area-inset-bottom)); text-align: left; }
+.sheet { width: 100%; max-width: 480px; max-height: 92vh; max-height: 92dvh; overflow-y: auto; background: var(--sheet); border-radius: 28px 28px 0 0; border-top: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); padding: 10px 20px calc(28px + env(safe-area-inset-bottom)); text-align: left; overflow-wrap: anywhere; }
 .handle { width: 40px; height: 4px; border-radius: 4px; background: color-mix(in srgb, var(--cream) 25%, transparent); margin: 0 auto 14px; }
 .sheet-head { display: flex; align-items: center; gap: 12px; }
-.sheet-head h2 { flex: 1; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.sheet-head h2 { flex: 1; min-width: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
 .sheet h2.title { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 10px; }
 .sheet p { font-size: 14.5px; line-height: 1.45; margin-top: 8px; }
 .sheet .strong { font-weight: 600; }

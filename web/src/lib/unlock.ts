@@ -5,11 +5,16 @@ import { toVault, vaultCount } from "./model";
 import { parseSpassText } from "./parse";
 import type { Vault } from "./types";
 
+/** Real Samsung Pass exports are well under 10 MB; refuse anything absurd before reading/decrypting it. */
+export const MAX_SPASS_BYTES = 64 * 1024 * 1024;
+export const TOO_LARGE = "This file is too large to be a Samsung Pass export.";
+
 export function isPlaintextExport(text: string): boolean {
   return looksLikeSpassPlaintext(text);
 }
 
 export async function unlockText(fileText: string, password: string): Promise<Vault> {
+  if (fileText.length > MAX_SPASS_BYTES) throw new SpassError("format", TOO_LARGE);
   const text = fileText.replace(/^\uFEFF/, "");
   if (isPlaintextExport(text)) {
     const vault = toVault(parseSpassText(text), true);

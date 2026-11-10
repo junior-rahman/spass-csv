@@ -2,9 +2,11 @@ import {
   FORMATS,
   GAP_LABEL,
   GAP_TAG,
+  MAX_SPASS_BYTES,
   MERGE_FIELDS,
   NAMED_FORMATS,
   SpassError,
+  TOO_LARGE,
   addressesToCsv,
   applyLoginEdit,
   cardsToCsv,
@@ -132,6 +134,15 @@ function placeGroups(logins: Login[]): { label: string; items: Login[] }[] {
 }
 
 const DOTS = "••••••••";
+
+/** First user-perceived character (emoji, flags, accents) for avatars; never half a surrogate pair. */
+export function initial(text: string): string {
+  const t = text.trim();
+  if (!t) return "?";
+  const Seg = (Intl as unknown as { Segmenter?: new (l?: string, o?: { granularity: string }) => { segment(s: string): Iterable<{ segment: string }> } }).Segmenter;
+  if (Seg) for (const part of new Seg(undefined, { granularity: "grapheme" }).segment(t)) return part.segment;
+  return Array.from(t)[0];
+}
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHandle {
@@ -154,18 +165,25 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   async function convert() {
     if (!canConvert() || !state.file) return;
-    state.status = "working";
-    state.error = null;
+    const s = state;
+    s.status = "working";
+    s.error = null;
     render();
     try {
-      const text = await readFileText(state.file);
-      state.vault = await unlockText(text, state.password);
-      state.password = "";
-      state.status = "done";
+      if (s.file!.size > MAX_SPASS_BYTES) throw new SpassError("format", TOO_LARGE);
+      const text = await readFileText(s.file!);
+      const vault = await unlockText(text, s.password);
+      // Reset (Change file) or app left while unlocking: never surface the vault afterwards.
+      if (state !== s) return;
+      if (document.visibilityState === "hidden") { wipe(); return; }
+      s.vault = vault;
+      s.password = "";
+      s.status = "done";
     } catch (error) {
-      state.status = "form";
+      if (state !== s) return;
+      s.status = "form";
       const err = error instanceof SpassError ? error : new SpassError("format", "Something went wrong reading this file.");
-      state.error = { field: err.code === "format" ? "file" : "password", message: err.message };
+      s.error = { field: err.code === "format" ? "file" : "password", message: err.message };
     }
     render();
   }
@@ -189,10 +207,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   async function confirmSave(fileName: string, csv: string, primary: boolean) {
     if (state.externalPending) return;
-    state.sheet = null;
-    state.externalPending = true;
+    const s = state;
+    s.sheet = null;
+    s.externalPending = true;
     render();
     const ok = await platform.save(fileName, csv);
+    // Change file while the system save dialog was open: don't show the old file's guide on the new state.
+    if (state !== s) return;
     state.externalPending = false;
     state.saved = state.saved || ok;
     if (ok && primary) state.sheet = { kind: "import-guide" };
@@ -321,7 +342,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   }
 
   function fieldError(field: "file" | "password"): HTMLElement | null {
-    return state.error?.field === field ? el("p", { class: "error", role: "alert" }, [state.error.message]) : null;
+    return state.error?.field === field ? el("p", { class: "error", role: "alert", id: `${field}-error` }, [state.error.message]) : null;
   }
 
   function fileInput(): HTMLInputElement {
@@ -376,7 +397,8 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       id: "spass-password",
       autocomplete: "off",
       spellcheck: "false",
-      "aria-describedby": "pw-help"
+      "aria-describedby": state.error?.field === "password" ? "password-error" : "pw-help",
+      "aria-invalid": state.error?.field === "password" ? "true" : "false"
     }) as HTMLInputElement;
     input.value = state.password;
     input.addEventListener("input", () => {
@@ -429,7 +451,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const sub = login.username ? `${login.username} · ${DOTS}` : host || login.note.split("\n")[0] || "";
     return el("li", {}, [
       el("button", { type: "button", class: "row", "data-testid": testid, "data-id": login.id, onclick: () => openEdit(login, after) }, [
-        el("span", { class: "av", "aria-hidden": "true" }, [title ? title.charAt(0) : "?"]),
+        el("span", { class: "av", "aria-hidden": "true" }, [initial(title)]),
         el("span", { class: "t" }, [
           el("b", { class: title ? "" : "untitled" }, [title || "Untitled login"]),
           el("span", {}, [testid === "login" ? (login.username || host) : sub])
@@ -519,13 +541,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   function countsLine(vault: Vault): HTMLElement {
     const incomplete = needsLook(vault.logins, state.format).length;
-    const item = (n: number, label: string, cls = "") => el("span", { class: cls }, [el("b", {}, [String(n)]), label]);
+    const item = (n: number, one: string, many: string, cls = "") => el("span", { class: cls }, [el("b", {}, [String(n)]), n === 1 ? one : many]);
     return el("div", { class: "counts", "data-testid": "counts" }, [
-      item(vault.logins.length, "Logins"),
-      item(vault.cards.length, "Cards"),
-      vault.addresses.length ? item(vault.addresses.length, "Addresses") : null,
-      item(vault.notes.length, "Notes"),
-      incomplete ? item(incomplete, "Incomplete", "warn") : null
+      item(vault.logins.length, "Login", "Logins"),
+      item(vault.cards.length, "Card", "Cards"),
+      vault.addresses.length ? item(vault.addresses.length, "Address", "Addresses") : null,
+      item(vault.notes.length, "Note", "Notes"),
+      incomplete ? item(incomplete, "Incomplete", "Incomplete", "warn") : null
     ]);
   }
 
@@ -570,7 +592,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const dest = state.format === "other" ? "your password manager" : formatInfo().label;
     return [
       el("div", { class: "sheet-head" }, [
-        el("span", { class: "av", "aria-hidden": "true" }, [title ? title.charAt(0) : "?"]),
+        el("span", { class: "av", "aria-hidden": "true" }, [initial(title)]),
         el("h2", {}, [title || "Untitled login"]),
         el("button", { type: "button", class: "x", "aria-label": "Close", onclick: back }, [icon("close")])
       ]),
@@ -818,6 +840,25 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     ];
   }
 
+  /** Android back / Escape: step back inside a sheet, close it, or leave the password step. False = let the system handle it. */
+  function goBack(): boolean {
+    const s = state.sheet;
+    if (state.externalPending) return true;
+    if (s) {
+      if (s.kind === "edit") returnAfter(s.after, s.browseQuery);
+      else if (s.kind === "merge" && s.fromList) state.sheet = { kind: "merges" };
+      else state.sheet = null;
+      render();
+      return true;
+    }
+    if (stage() === "password") { wipe(); return true; }
+    return false;
+  }
+  (globalThis as unknown as { spccBack?: () => boolean }).spccBack = goBack;
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && state.sheet) { e.preventDefault(); goBack(); }
+  });
+
   function sheet(): HTMLElement | null {
     const s = state.sheet;
     if (!s) return null;
@@ -857,8 +898,9 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         el("div", { class: "acts" }, [el("button", { type: "button", class: "cta", onclick: close }, ["Done"])])
       ];
     }
+    const label = body.find((n) => n?.tagName === "H2")?.textContent || body.map((n) => n?.querySelector("h2")?.textContent).find(Boolean) || "Dialog";
     return el("div", { class: "scrim", onclick: (e: Event) => { if (e.target === e.currentTarget) close(); } }, [
-      el("div", { class: "sheet", role: "dialog", "aria-modal": "true", "data-testid": `sheet-${s.kind}` }, [el("div", { class: "handle", "aria-hidden": "true" }), ...body])
+      el("div", { class: "sheet", id: "sheet", tabindex: "-1", role: "dialog", "aria-modal": "true", "aria-label": label, "data-testid": `sheet-${s.kind}` }, [el("div", { class: "handle", "aria-hidden": "true" }), ...body])
     ]);
   }
 
@@ -873,9 +915,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
 
   // ---------- render ----------
 
+  let lastSheet: Sheet = null;
   function render() {
     const active = document.activeElement as HTMLInputElement | null;
-    const focusId = state.focusNext || (active && root.contains(active) ? active.id : "");
+    // A sheet that just opened (or changed) takes focus so keyboard / TalkBack users land inside it.
+    const sheetChanged = state.sheet !== lastSheet && state.sheet !== null && state.sheet.kind !== lastSheet?.kind;
+    lastSheet = state.sheet;
+    const focusId = state.focusNext || (active && root.contains(active) && !sheetChanged ? active.id : "") || (sheetChanged ? "sheet" : "");
     const sel = !state.focusNext && focusId && active && "selectionStart" in active ? [active.selectionStart, active.selectionEnd] : null;
     state.focusNext = "";
     paint();

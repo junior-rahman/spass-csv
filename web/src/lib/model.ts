@@ -15,13 +15,16 @@ function pick(row: Record<string, string>, keys: string[]): string {
 }
 
 const BARE_DOMAIN = /^[a-z0-9.-]+\.[a-z]{2,}([/:?#].*)?$/i;
+const OCTET = "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
+/** Bare IPv4 host (router / NAS logins), optional port or path. */
+const BARE_IPV4 = new RegExp(`^${OCTET}(\\.${OCTET}){3}([/:?#].*)?$`);
 
 /** Normalizes a URL the user typed, or a bare domain from the export. Returns "" when it is not a site. */
 export function normalizeUserUrl(input: string): string {
   const value = input.trim();
   if (!value) return "";
   if (/^https?:\/\//i.test(value)) return value;
-  if (BARE_DOMAIN.test(value)) return `https://${value}`;
+  if (BARE_DOMAIN.test(value) || BARE_IPV4.test(value)) return `https://${value}`;
   return "";
 }
 

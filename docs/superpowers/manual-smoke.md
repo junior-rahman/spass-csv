@@ -32,3 +32,10 @@ Synthetic export: generate `/tmp/sample.spass` with `encryptSpass(samplePlaintex
 
 ## Play screenshots (light + dark)
 - [ ] Idle console (File), unlocked with counts (Unlock), save confirm sheet (Save).
+
+## 2.0.19 audit checks (APK)
+- [ ] Status bar, navigation bar, and cutout never cover content; the keyboard never covers the password field or edit inputs.
+- [ ] Back closes an open sheet; back from Edit returns to the list; back on the password screen returns home; back from the vault leaves the app (and clears it).
+- [ ] Fold/unfold or resize in split-screen while unlocked → vault still shown (no reload).
+- [ ] Cancel or fail a save (e.g. full storage) → no empty CSV left behind.
+- [ ] 360 dp wide: overview tiles, merge sheet close button, and long notes all stay on screen.

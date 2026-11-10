@@ -32,6 +32,11 @@ Not affiliated with Samsung.
 
 To start over with a different export, tap **Change file**. Leaving the app also clears unlocked data from memory.
 
+- **Back** (Android button/gesture, or Esc on the web page) closes the open sheet first, steps back from an edit to the list you came from, and only then leaves the app.
+- Exports up to 64 MB are accepted; anything larger is rejected before decrypting.
+- Websites are read as written: `www.amazon.com`, `mail.google.com`, IP addresses like `192.168.1.1:8080`, and `android://…@com.example.app` app links all map correctly.
+- CSV safety: usernames and passwords are written exactly as exported (a `+44…` phone-number username stays as-is). Other text cells that start with `=`, `+`, `-`, `@`, tab, or CR get a leading `'` so spreadsheets don't run them as formulas.
+
 ## Develop
 
 ```bash
@@ -42,6 +47,8 @@ npm run check     # fails if generated files drift or Android policy is violated
 gradle -p android assembleRelease   # signed APK; needs JDK 17 + Android SDK 36 and android/keystore.properties
 gradle -p android bundleRelease     # signed Play AAB (same signing setup)
 ```
+
+Toolchain: JDK 17, Gradle 8.13, Android Gradle Plugin 8.11.1, Kotlin 2.0.21, compileSdk/targetSdk 36, minSdk 29. The Android app draws edge-to-edge (target 36) and pads the WebView for system bars, display cutouts, and the keyboard.
 
 Sources live in `web/src` (TypeScript) and `android/` (Kotlin). Never edit the generated root files by hand.
 

@@ -179,7 +179,7 @@ describe("destination chip + sheet", () => {
     expect(sheet.querySelector(".ng-other[data-format=other]")!.textContent).toContain("passwords.csv");
     expect(q(sheet, ".ng-tile.sel").dataset.format).toBe("1password");
     expect(q(sheet, ".ng-tile.sel .ring-field")).not.toBeNull();
-    expect(q(sheet, "[data-testid=counts]").textContent).toMatch(/3Logins.*1Cards.*1Notes.*1Incomplete/);
+    expect(q(sheet, "[data-testid=counts]").textContent).toMatch(/3Logins.*1Card.*1Address.*1Note.*1Incomplete/);
     expect(sheet.querySelector("input")).toBeNull();
     click(sheet, "[data-format=google]");
     expect(document.querySelector("[data-testid=sheet-destination]")).toBeNull();

@@ -8,7 +8,9 @@ import android.provider.DocumentsContract
 import android.os.Build
 import android.provider.OpenableColumns
 import android.os.Bundle
+import android.graphics.Color
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -20,6 +22,11 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.AlertDialog
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.JavaScriptReplyProxy
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewAssetLoader
@@ -66,28 +73,59 @@ class MainActivity : ComponentActivity() {
     private val createCsv = registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         val csv = pendingCsv
         pendingCsv = null
-        val ok = uri != null && csv != null && runCatching {
-            contentResolver.openOutputStream(uri, "wt")!!.use { it.write(csv.toByteArray(Charsets.UTF_8)) }
-        }.isSuccess
+        val ok = uri != null && csv != null && writeCsv(uri, csv)
+        // The picker already created the document; never leave an empty/partial CSV behind on failure.
+        if (!ok && uri != null) runCatching { DocumentsContract.deleteDocument(contentResolver, uri) }
         pendingReply?.postMessage(JSONObject().put("type", "saved").put("ok", ok).toString())
         pendingReply = null
     }
 
     @SuppressLint("SetJavaScriptEnabled")
+    @Suppress("DEPRECATION") // allowFile/UniversalAccessFromFileURLs: still set false explicitly for old WebViews
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // targetSdk 35+ is always edge-to-edge: draw charcoal behind the bars and pad the WebView by the
+        // system-bar / cutout / keyboard insets so nothing sits under the status bar or gesture bar.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+        )
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         WebView.setWebContentsDebuggingEnabled(false)
         webView = WebView(this)
-        setContentView(webView)
+        val container = FrameLayout(this).apply {
+            setBackgroundColor(CANVAS)
+            addView(webView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        }
+        webView.setBackgroundColor(CANVAS)
+        setContentView(container)
+        ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            WindowInsetsCompat.CONSUMED
+        }
+
+        // Back closes the open sheet (or leaves the password step) before it exits the app.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                webView.evaluateJavascript("(window.spccBack && window.spccBack()) ? 1 : 0") { handled ->
+                    if (handled != "1") {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            }
+        })
 
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             allowFileAccess = false
             allowContentAccess = false
-            @Suppress("DEPRECATION") allowFileAccessFromFileURLs = false
-            @Suppress("DEPRECATION") allowUniversalAccessFromFileURLs = false
+            allowFileAccessFromFileURLs = false
+            allowUniversalAccessFromFileURLs = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             setGeolocationEnabled(false)
         }
@@ -206,6 +244,18 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
+    /** Some providers (e.g. cloud drives) reject "wt"; fall back to "w". */
+    private fun writeCsv(uri: Uri, csv: String): Boolean {
+        val bytes = csv.toByteArray(Charsets.UTF_8)
+        for (mode in arrayOf("wt", "w")) {
+            val ok = runCatching {
+                contentResolver.openOutputStream(uri, mode)!!.use { it.write(bytes); it.flush() }
+            }.isSuccess
+            if (ok) return true
+        }
+        return false
+    }
+
     private fun isSpassUri(uri: Uri): Boolean {
         val name = runCatching {
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
@@ -218,6 +268,7 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val CANVAS = 0xFF181716.toInt()
         const val ASSET_HOST = "appassets.androidplatform.net"
         const val ASSET_ORIGIN = "https://appassets.androidplatform.net"
         private val SPASS_MIME_TYPES = arrayOf("application/octet-stream", "application/x-spass", "application/spass")

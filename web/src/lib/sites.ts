@@ -93,10 +93,27 @@ export function siteForPackage(pkg: string): string {
   return key ? BY_LOWER.get(key) ?? "" : "";
 }
 
+/** Package names that start like this are never websites (com.whatsapp.android). */
+const PACKAGE_ROOTS = new Set(["com", "org", "net", "android"]);
+/** Country / generic TLDs that only appear at the end of website hosts. */
+const WEB_TLDS = new Set([
+  "com", "org", "net", "edu", "gov", "mil", "int", "info", "biz", "online", "site", "shop", "store", "cloud",
+  "uk", "de", "fr", "nl", "ch", "at", "be", "it", "es", "se", "no", "dk", "fi", "pl", "cz", "ru", "ua", "tr", "jp", "kr", "cn", "tw", "hk", "sg", "in",
+  "id", "my", "th", "vn", "ph", "au", "nz", "ca", "us", "mx", "br", "ar", "za", "eu", "ie", "pt", "gr", "hu", "ro", "sk", "bg", "il", "ae", "sa", "pk", "bd", "ng", "ke", "eg"
+]);
+
+/** True for "www.amazon.com" / "mail.google.com" / "de.wikipedia.org"; false for "com.whatsapp.android" or "com.foo.app". */
+function looksLikeHost(value: string): boolean {
+  const labels = value.toLowerCase().split(".");
+  if (labels[0] === "www") return true;
+  return WEB_TLDS.has(labels[labels.length - 1]) && !PACKAGE_ROOTS.has(labels[0]);
+}
+
 export function extractPackage(value: string): string {
   const trimmed = value.trim();
-  const android = trimmed.match(/^android(?:app)?:\/\/([^/\s]+)/i);
+  // android://<signing-hash>@<package>/ (Chrome / Samsung Pass app logins) or android://<package>
+  const android = trimmed.match(/^android(?:app)?:\/\/(?:[^@/\s]*@)?([^/\s@]+)/i);
   if (android) return android[1];
-  if (/^[A-Za-z][\w]*(\.[\w-]+){2,}$/.test(trimmed)) return trimmed;
+  if (/^[A-Za-z][\w]*(\.[\w-]+){2,}$/.test(trimmed) && !looksLikeHost(trimmed)) return trimmed;
   return "";
 }
