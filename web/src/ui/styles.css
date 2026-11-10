@@ -184,6 +184,8 @@ li:first-child > .row { border-top: 0; }
 .in { height: 54px; border-radius: 16px; background: var(--soil); border: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); display: flex; align-items: center; padding: 0 6px 0 16px; gap: 6px; }
 .in input, .in textarea { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--cream); font: 400 16px Outfit, sans-serif; }
 .in input::placeholder, .in textarea::placeholder { color: color-mix(in srgb, var(--cream) 55%, transparent); } /* ≥4.5:1 on canvas (2.0.21) */
+.in.multi { height: auto; min-height: 54px; align-items: stretch; padding: 14px 6px 14px 16px; }
+.in.multi textarea { resize: none; line-height: 1.4; padding: 0; white-space: pre-wrap; }
 .in:focus-within { border: 2px solid var(--fern); box-shadow: 0 0 0 5px color-mix(in srgb, var(--fern) 14%, transparent); }
 .ef .hint { margin: 8px 0 0 4px; font-size: 12.5px; color: color-mix(in srgb, var(--cream) 62%, transparent); }
 .ef .hint.error { color: var(--danger); }

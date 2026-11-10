@@ -39,7 +39,7 @@ People export for the wrong password manager, then hit 1Password’s Label step 
 ## After Save guide
 
 - On successful Save (file written), show a sheet (not only a snackbar) with a numbered checklist for the **current** destination.
-- **1Password:** Open [my.1password.com](https://my.1password.com) → Import → CSV → Label left→right **Title, Website, Username, Password, Notes** → Continue → delete the CSV. Note: blank Website cells are valid; autofill needs a real URL later in 1Password.
+- **1Password:** Open [my.1password.com](https://my.1password.com) → your name → Import data → CSV File → Label left→right **Title, Website, Username, Password, Notes** → Continue → delete the CSV. Note: blank Website cells are valid; autofill needs a real URL later in 1Password.
 - **Google / Apple / Bitwarden:** Short official-path steps + their column/header expectations (existing format hints, expanded to checklist).
 - Primary action: **Done** (dismiss). Incomplete-login warn still runs **before** Save as today.
 - Guide appears every successful Save (no “don’t show again” in this pass).

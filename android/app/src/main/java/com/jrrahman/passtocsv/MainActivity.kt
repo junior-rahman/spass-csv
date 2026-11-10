@@ -5,11 +5,12 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.os.Build
 import android.os.Bundle
 import android.graphics.Color
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.view.ViewGroup
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -46,9 +47,12 @@ class MainActivity : ComponentActivity() {
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var pendingCsv: String? = null
     private var pendingReply: JavaScriptReplyProxy? = null
+    /** The WebView renderer died (crash or killed for memory); the activity is being recreated. */
+    private var webViewGone = false
 
     private val backCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
+            if (webViewGone) { systemBack(); return }
             webView.evaluateJavascript("(window.spccBack && window.spccBack()) ? 1 : 0") { handled ->
                 if (handled != "1") systemBack()
             }
@@ -92,8 +96,14 @@ class MainActivity : ComponentActivity() {
         val ok = uri != null && csv != null && writeCsv(uri, csv)
         // The picker already created the document; never leave an empty/partial CSV behind on failure.
         if (!ok && uri != null) runCatching { DocumentsContract.deleteDocument(contentResolver, uri) }
-        pendingReply?.postMessage(JSONObject().put("type", "saved").put("ok", ok).toString())
+        pendingReply?.let { replySaved(it, ok) }
         pendingReply = null
+    }
+
+    /** A JavaScriptReplyProxy only exists when WEB_MESSAGE_LISTENER is supported; the check keeps lint honest. */
+    private fun replySaved(reply: JavaScriptReplyProxy, ok: Boolean) {
+        if (webViewGone || !WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) return
+        reply.postMessage(JSONObject().put("type", "saved").put("ok", ok).toString())
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -147,6 +157,20 @@ class MainActivity : ComponentActivity() {
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                 request.url.host != ASSET_HOST
+
+            // Without this, a renderer crash or an out-of-memory kill (common while the app sits behind the
+            // system file pickers) crashes the whole app. The unlocked vault died with the renderer, so start clean.
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                if (webViewGone) return true
+                webViewGone = true
+                pendingCsv = null
+                pendingReply = null
+                fileCallback = null
+                (view.parent as? ViewGroup)?.removeView(view)
+                view.destroy()
+                if (!isFinishing && !isDestroyed) recreate()
+                return true
+            }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
@@ -164,9 +188,7 @@ class MainActivity : ComponentActivity() {
                     type = "application/octet-stream"
                     putExtra(Intent.EXTRA_MIME_TYPES, SPASS_MIME_TYPES)
                     putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
-                    }
+                    putExtra(DocumentsContract.EXTRA_INITIAL_URI, DOWNLOADS_URI)
                 }
                 if (runCatching { pickFile.launch(intent) }.isFailure) {
                     fileCallback?.onReceiveValue(null)
@@ -187,13 +209,13 @@ class MainActivity : ComponentActivity() {
                 if (json.optString("type") != "save") return@addWebMessageListener
                 val name = json.optString("fileName").takeIf { SAFE_NAME.matches(it) } ?: "samsung-pass.csv"
                 // A second save while one is open: fail the older one so its promise settles now.
-                pendingReply?.postMessage(JSONObject().put("type", "saved").put("ok", false).toString())
+                pendingReply?.let { replySaved(it, false) }
                 pendingCsv = json.optString("csv")
                 pendingReply = reply
                 if (runCatching { createCsv.launch(name) }.isFailure) {
                     pendingCsv = null
                     pendingReply = null
-                    reply.postMessage(JSONObject().put("type", "saved").put("ok", false).toString())
+                    replySaved(reply, false)
                 }
             }
         }
@@ -239,19 +261,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        webView.onPause() // fires visibilitychange → page wipes vault unless a picker is open
+        if (!webViewGone) webView.onPause() // fires visibilitychange → page wipes vault unless a picker is open
     }
 
     override fun onResume() {
         super.onResume()
-        webView.onResume()
+        if (!webViewGone) webView.onResume()
         resumeUpdateIfNeeded()
     }
 
     override fun onDestroy() {
         pendingCsv = null
         if (::appUpdateManager.isInitialized) appUpdateManager.unregisterListener(installListener)
-        webView.destroy()
+        if (!webViewGone) webView.destroy()
         super.onDestroy()
     }
 

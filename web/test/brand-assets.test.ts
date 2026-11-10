@@ -44,13 +44,13 @@ function greenShare(path: string): number {
 
 describe("launcher icon (Ember Charcoal adaptive vector)", () => {
   it("is adaptive with background, foreground, and monochrome layers", () => {
-    const xml = readFileSync(join(RES, "mipmap-anydpi-v26/ic_launcher.xml"), "utf8");
+    const xml = readFileSync(join(RES, "mipmap-anydpi/ic_launcher.xml"), "utf8");
     for (const tag of ["<background", "<foreground", "<monochrome"]) expect(xml).toContain(tag);
     expect(readFileSync(join(RES, "values/ic_launcher_background.xml"), "utf8")).toMatch(/#181716/i);
     expect(readFileSync(join(RES, "drawable/ic_launcher_foreground.xml"), "utf8")).toMatch(/fillColor="#D9A55B"/i);
   });
   it("ships no stale raster launcher icons", () => {
-    for (const dir of readdirSync(RES).filter((d) => d.startsWith("mipmap-") && d !== "mipmap-anydpi-v26")) {
+    for (const dir of readdirSync(RES).filter((d) => d.startsWith("mipmap-") && d !== "mipmap-anydpi")) {
       expect(readdirSync(join(RES, dir)).filter((f) => /^ic_launcher/.test(f))).toEqual([]);
     }
   });

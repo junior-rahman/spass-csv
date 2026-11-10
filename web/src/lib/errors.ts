@@ -10,4 +10,4 @@ export class SpassError extends Error {
 }
 
 export const WRONG_PASSWORD =
-  "Couldn't unlock this file. Use the password you set while exporting, not your Samsung account password.";
+  "Couldn't unlock this file. Use the password you set when exporting, not your Samsung account password.";

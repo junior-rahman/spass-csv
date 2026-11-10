@@ -643,16 +643,17 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const back = () => { returnAfter(s.after, s.browseQuery); render(); };
     const gaps = lookGaps(login, state.format);
     const title = s.draft.name || resolvedTitle(login);
-    const field = (key: keyof LoginEdit, id: string, label: string, opts: { type?: string; placeholder?: string; hint?: string; error?: string; trailing?: HTMLElement } = {}) => {
-      const input = el("input", {
-        id, type: opts.type ?? "text", autocomplete: "off", spellcheck: "false", placeholder: opts.placeholder ?? "",
+    const field = (key: keyof LoginEdit, id: string, label: string, opts: { type?: string; placeholder?: string; hint?: string; error?: string; trailing?: HTMLElement; multiline?: boolean } = {}) => {
+      // Notes are multi-line: an <input> would silently strip their line breaks on Save changes.
+      const input = el(opts.multiline ? "textarea" : "input", {
+        id, ...(opts.multiline ? { rows: "3" } : { type: opts.type ?? "text" }), autocomplete: "off", spellcheck: "false", placeholder: opts.placeholder ?? "",
         ...(opts.error ? { "aria-invalid": "true", "aria-describedby": `${id}-error` } : {})
       }) as HTMLInputElement;
       input.value = s.draft[key];
       input.addEventListener("input", () => { s.draft[key] = input.value; });
       return el("div", { class: "ef" }, [
         el("label", { for: id }, [label]),
-        el("div", { class: "in" }, [input, opts.trailing ?? null]),
+        el("div", { class: opts.multiline ? "in multi" : "in" }, [input, opts.trailing ?? null]),
         opts.error ? el("p", { class: "hint error", id: `${id}-error`, role: "alert", "data-testid": `${id}-error` }, [opts.error])
           : opts.hint ? el("p", { class: "hint" }, [opts.hint]) : null
       ]);
@@ -671,7 +672,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         type: s.showPassword ? "text" : "password",
         trailing: el("button", { type: "button", class: "icon-btn", "aria-label": s.showPassword ? "Hide password" : "Show password", onclick: () => { s.showPassword = !s.showPassword; render(); } }, [icon(s.showPassword ? "visibility_off" : "visibility")])
       }),
-      field("note", "edit-notes", "Notes", { placeholder: "Optional" }),
+      field("note", "edit-notes", "Notes", { placeholder: "Optional", multiline: true }),
       el("div", { class: "acts" }, [
         el("button", { type: "button", class: "danger-btn", "data-testid": "edit-delete", onclick: () => deleteLogin(login.id) }, ["Delete"]),
         el("button", { type: "button", class: "cta", "data-testid": "edit-save", onclick: () => {
@@ -965,7 +966,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     else if (s.kind === "leave") body = leaveSheet(close);
     else if (s.kind === "save") {
       body = [
-        el("h2", { class: "title" }, ["Save plaintext CSV?"]),
+        el("h2", { class: "title" }, ["Save plain-text CSV?"]),
         el("p", {}, [`${s.fileName} will contain your passwords in plain text. Anyone with the file can read them.`]),
         el("p", { class: "strong" }, ["Import it into your password manager, then delete it."]),
         el("div", { class: "acts" }, [

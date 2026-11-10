@@ -48,11 +48,11 @@ gradle -p android assembleRelease   # signed APK; needs JDK 17 + Android SDK 36 
 gradle -p android bundleRelease     # signed Play AAB (same signing setup)
 ```
 
-Toolchain: JDK 17, Gradle 8.13, Android Gradle Plugin 8.11.1, Kotlin 2.0.21, compileSdk/targetSdk 36, minSdk 29. AndroidX: activity 1.13.0, webkit 1.18.0, fragment 1.9.1 (declared explicitly so Play's app-update library no longer pulls fragment 1.0.0). The Android app draws edge-to-edge (target 36) and pads the WebView for system bars, display cutouts, and the keyboard.
+Toolchain: JDK 17, Gradle 8.13, Android Gradle Plugin 8.11.1, Kotlin 2.0.21, compileSdk/targetSdk 36, minSdk 29. AndroidX: activity 1.13.0, webkit 1.18.0, fragment 1.9.1 (declared explicitly so Play's app-update library no longer pulls fragment 1.0.0). The Android app draws edge-to-edge (target 36) and pads the WebView for system bars, display cutouts, and the keyboard. If the WebView renderer crashes or is killed for memory, the activity recreates itself at the home screen (the unlocked vault died with the renderer) instead of crashing.
 
 Sources live in `web/src` (TypeScript) and `android/` (Kotlin). Never edit the generated root files by hand.
 
-The launcher icon is an adaptive vector (`android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`): brass P-ring foreground (`drawable/ic_launcher_foreground.xml`), Ember Charcoal `#181716` background, and a monochrome layer for themed icons. Play listing art lives in `docs/play/art/` (see `docs/play/listing.md`).
+The launcher icon is an adaptive vector (`android/app/src/main/res/mipmap-anydpi/ic_launcher.xml`): brass P-ring foreground (`drawable/ic_launcher_foreground.xml`), Ember Charcoal `#181716` background, and a monochrome layer for themed icons. Play listing art lives in `docs/play/art/` (see `docs/play/listing.md`).
 
 Build output (`*.apk`, `*.aab`, `dist/`) is gitignored. Signing keys stay local in `android/keystore.properties` (also gitignored).
 

@@ -55,3 +55,10 @@ Synthetic export: generate `/tmp/sample.spass` with `encryptSpass(samplePlaintex
 - [ ] Delete every login → Save CSV: "No logins to save." and no file.
 - [ ] TalkBack / keyboard with a sheet open: focus never reaches the page behind it.
 - [ ] Android 16 (API 36) gesture Back: predictive back still closes sheets and shows "Leave and clear?" from the vault.
+
+## 2.0.22 checks (APK)
+- [ ] Edit a login whose note has several lines → change the username → Save changes → Save CSV: the note keeps its line breaks in the CSV.
+- [ ] Notes field in Edit grows to three lines; the keyboard's Enter adds a new line.
+- [ ] Renderer kill: vault open → `adb shell am kill` is not enough; on a debug build run `adb shell dumpsys activity` to find the WebView sandboxed renderer and `adb shell kill <pid>` (root/emulator). App reloads to home instead of closing with "Spcc keeps stopping".
+- [ ] Launcher icon (adaptive + themed) still shows after the `mipmap-anydpi` folder rename.
+- [ ] Apple guide reads Settings → Apps → Safari → Import; 1Password guide reads your name → Import data → CSV File.
