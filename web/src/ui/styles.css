@@ -1,20 +1,22 @@
-/* Night Grove — approved 2026-11-06. Spec: docs/superpowers/specs/2026-11-06-night-grove-design.md */
+/* Ember Charcoal — approved 2026-11-09 (layout from Night Grove 2026-11-06).
+   Spec: docs/superpowers/specs/2026-11-06-night-grove-design.md (Ember Charcoal section).
+   Token names are historical: --soil = canvas, --olive = brass CTA/accent fill, --fern = amber accent text, --grove = deep bronze. */
 @font-face { font-family: Outfit; src: url(assets/outfit-400.ttf) format("truetype"); font-weight: 400; font-display: swap; }
 @font-face { font-family: Outfit; src: url(assets/outfit-500.ttf) format("truetype"); font-weight: 500; font-display: swap; }
 @font-face { font-family: Outfit; src: url(assets/outfit-600.ttf) format("truetype"); font-weight: 600; font-display: swap; }
 
 :root {
-  --soil: #1C1917;
-  --grove: #3F4F3A;
-  --olive: #6B8F71;
-  --fern: #A3C9A8;
-  --cream: #F7F4EF;
-  --mist: #E8EDE6;
-  --caution: #B54708;
-  --danger: #FFB4A8;
-  --sheet: #24201D;
-  --caution-text: #F2B98A;
-  --caution-line: #E8A06A;
+  --soil: #181716;
+  --grove: #4A3A22;
+  --olive: #D9A55B;
+  --fern: #EBC58C;
+  --cream: #F5F0E8;
+  --mist: #EDE6DA;
+  --caution: #B3402F;
+  --danger: #FFB1C1;
+  --sheet: #211F1D;
+  --caution-text: #F4A89B;
+  --caution-line: #E58A7A;
   --muted: color-mix(in srgb, var(--cream) 68%, transparent);
   --line: color-mix(in srgb, var(--cream) 8%, transparent);
   --surface: color-mix(in srgb, var(--cream) 5%, var(--soil));
@@ -99,6 +101,9 @@ button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px so
 .vault-main { flex: 1; padding: 6px 20px 24px; }
 .ov-hero { position: relative; overflow: hidden; margin: 16px 0 6px; padding: 18px 4px 12px; }
 .ov-hero .ring-field { right: -36px; top: -54px; width: 200px; height: 200px; }
+/* Soft glow, fully transparent by 46px from centre: the hero clips the ring field 46px above its centre,
+   so the glow never reaches a clip edge (no faint rectangle). */
+.ov-hero .ring-field { box-shadow: none; background: radial-gradient(circle 46px at center, color-mix(in srgb, var(--olive) 16%, transparent), color-mix(in srgb, var(--olive) 6%, transparent) 60%, transparent 100%); }
 .ov-n { font-size: 56px; font-weight: 600; letter-spacing: -0.045em; line-height: 1; }
 .ov-sub { margin-top: 8px; font-size: 16px; font-weight: 500; }
 .ov-meta { margin-top: 6px; font-size: 13.5px; color: var(--muted); }
@@ -166,6 +171,7 @@ li:first-child > .row { border-top: 0; }
 .acts { margin-top: 22px; display: flex; gap: 12px; }
 .acts .cta { flex: 1; }
 .acts.stack { flex-direction: column; }
+.acts.stack .cta { flex: none; } /* column stack: keep the 58px CTA height (flex: 1 collapsed it to 0 basis) */
 .ghost { height: 58px; padding: 0 22px; border-radius: 18px; background: none; border: 1.5px solid color-mix(in srgb, var(--cream) 30%, transparent); font: 500 16px Outfit, sans-serif; }
 .danger-btn { height: 58px; padding: 0 22px; border-radius: 18px; background: none; border: 1.5px solid color-mix(in srgb, var(--danger) 45%, transparent); color: var(--danger); font: 500 16px Outfit, sans-serif; }
 .ef { margin-top: 12px; }

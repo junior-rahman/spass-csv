@@ -17,6 +17,6 @@ Not affiliated with Samsung.
 
 **Data safety:** No data collected. No data shared. Data is not encrypted in transit because none is transmitted.
 
-**Screenshots:** Night Grove (dark). 1) Choose .spass file. 2) Enter export password and Unlock. 3) Overview vault (ready count, Needs a look, Browse logins). 4) Save CSV confirm / import guide.
+**Screenshots:** Ember Charcoal (dark). 1) Choose .spass file. 2) Enter export password and Unlock. 3) Overview vault (ready count, Needs a look, Browse logins). 4) Save CSV confirm / import guide.
 
 **Privacy policy:** PRIVACY.md (must match the in-app About & privacy sheet).

@@ -7,7 +7,33 @@ privacy posture and Android policy from those specs are unchanged unless stated 
 
 Visual source of truth: `dist/soft-grove-mockups/redesign-3/night-*.html` + `styles.css` and the approved PNGs.
 
-## 1. Visual system
+## 0. Palette update — Ember Charcoal (2026-11-09, v2.0.16)
+
+Status: **Approved** by Juel ("Go with Ember Charcoal", from the five-palette overview renders).
+Ember Charcoal replaces the Night Grove colours only. Layout, Outfit type, P-ring jewel shape and
+concentric rings, staged flow, overview vault, merge, Other save warning and extras are unchanged.
+CSS token names below are kept for continuity; their values are:
+
+| Token (CSS var) | Role | Ember Charcoal |
+|---|---|---|
+| `--soil` | Canvas, CTA label, theme-color, Android bars | `#181716` |
+| `--sheet` | Bottom-sheet surface | `#211F1D` |
+| `--olive` | Brass: CTA fill, selected tile/option, rings, glow | `#D9A55B` (charcoal label, 8.08:1) |
+| `--fern` | Amber accent: focus ring, text buttons | `#EBC58C` |
+| `--grove` | Deep bronze: snackbar Undo | `#4A3A22` |
+| `--cream` | Text; snackbar surface | `#F5F0E8` (muted = 68%) |
+| `--mist` | Reserved | `#EDE6DA` |
+| `--caution` | Brick-red "Needs a look" (not orange, so it never blurs with brass) | `#B3402F` (text `#F4A89B`, line `#E58A7A`) |
+| `--danger` | Delete outline on dark | `#FFB1C1` |
+
+- The in-app P-ring jewel is recoloured to a brass field with a charcoal glyph (same geometry).
+  The Android launcher icon (raster `mipmap-xxxhdpi/ic_launcher.webp`) is unchanged.
+- Overview hero glow is a radial gradient that fades out inside the ring field, so it is never clipped
+  into a visible box at the hero edge.
+
+The Night Grove table in §1 is kept for history.
+
+## 1. Visual system (Night Grove, superseded colours)
 
 | Token | Hex | Use |
 |---|---|---|
@@ -23,7 +49,7 @@ Visual source of truth: `dist/soft-grove-mockups/redesign-3/night-*.html` + `sty
 
 - Type: **Outfit** 400/500/600, bundled as local TTFs (inlined as `data:` URIs at build, CSP `font-src data:`). No Inter/Roboto.
 - Primary CTA: 58px tall, radius 18px, Olive fill, Soil text, 17px/500.
-- Mark: the existing circular P-ring PNG (`web/src/ui/assets/spcc-mark.png`) shown as a jewel inside faint concentric Olive rings. The PNG is never recoloured.
+- Mark: the existing circular P-ring PNG (`web/src/ui/assets/spcc-mark.png`) shown as a jewel inside faint concentric Olive rings. (Recoloured once to Ember Charcoal brass on 2026-11-09; geometry never redrawn.)
 - Banned: Material File/Unlock/Save rail, P2 Soft header chip layout, cream Soft Grove surfaces, privacy/trust strip on home or setup, search bars, Clear button.
 - `color-scheme: dark`; `theme-color` `#1C1917`. Android light + night themes both use Soil status/nav bars.
 

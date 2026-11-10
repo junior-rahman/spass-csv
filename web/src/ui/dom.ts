@@ -58,7 +58,7 @@ export function icon(name: string): HTMLElement {
   return span;
 }
 
-/** Locked Warm Grove P-ring mark (bitmap from mockups/brand/spcc-icon-warm-grove.jpg). */
+/** Locked P-ring mark (bitmap from mockups/brand/spcc-icon-warm-grove.jpg, recoloured to Ember Charcoal brass). */
 export function pRingMark(size = 56): HTMLElement {
   const span = el("span", { class: "mark", "data-mark": "p-ring", role: "img", "aria-label": "Spcc logo" }, []);
   const img = document.createElement("img");
