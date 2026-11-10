@@ -27,14 +27,15 @@ Not affiliated with Samsung.
    - If two logins share the same website (or app) **and** the same username, the overview shows one **Possible merges** line. Tap it to see each suggestion, pick which fields to keep, and Merge (with undo). Not the same login? Tap **Dismiss** in the list or the preview to hide that suggestion for this session (with undo). Dismissing never deletes anything.
    - Addresses, cards, and notes open from tiles. You can preview them, save a separate CSV, or delete an item (with undo). Bitwarden notes stay in the main file.
 6. Tap **Save CSV** and confirm. A step-by-step guide for your password manager appears — follow it to import.
+   - **Other** saves `passwords.csv` (on Android too). If no logins are left, Save CSV says so instead of writing an empty file.
    - When saving to **Other**, missing titles, usernames, or websites warn first. You can **Add** the missing labels, **Delete all** those incomplete logins, or **Keep them blank** (empty CSV cells — no placeholders).
 7. **Delete the CSV** and the `.spass` file after importing. The CSV holds your passwords in plain text.
 
 To start over with a different export, tap **Change file**. Leaving the app also clears unlocked data from memory.
 
 - **Back** (Android button/gesture, or Esc on the web page) closes the open sheet first and steps back from an edit to the list you came from. From the unlocked vault, Android Back asks **Leave and clear?** (**Stay** or **Leave**) before it clears the vault and leaves.
-- Websites are read as written: `www.amazon.com`, `mail.google.com`, IP addresses like `192.168.1.1:8080`, and `android://…@com.example.app` app links all map correctly.
-- CSV safety: usernames and passwords are written exactly as exported (a `+44…` phone-number username stays as-is). Other text cells that start with `=`, `+`, `-`, `@`, tab, or CR get a leading `'` so spreadsheets don't run them as formulas.
+- Websites are read as written: `www.amazon.com`, `mail.google.com`, international domains like `münchen.de`, `localhost:8080`, IP addresses like `192.168.1.1:8080`, and `android://…@com.example.app` app links all map correctly. If you type something in **Website** that isn't a website, Edit says so instead of clearing it.
+- CSV safety: usernames and passwords are written exactly as exported (a `+44…` phone-number username stays as-is; a password's leading or trailing spaces are kept, and such cells are quoted so importers don't trim them). Other text cells that start with `=`, `+`, `-`, `@`, tab, or CR get a leading `'` so spreadsheets don't run them as formulas.
 
 ## Develop
 

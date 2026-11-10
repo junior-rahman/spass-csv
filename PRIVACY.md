@@ -2,7 +2,7 @@
 
 - Spcc (Spass to CSV Converter) reads the `.spass` file you choose and decrypts it on your device with the password you type.
 - Nothing is uploaded. The Android app's INTERNET permission is used only by Google Play to check for and apply updates; the WebView that does the conversion has no network access. The web page blocks all network requests with its Content-Security-Policy.
-- No accounts, analytics, crash reporting, or telemetry.
+- No accounts, analytics, crash reporting, or telemetry. The Android app also opts its WebView out of Android System WebView usage metrics and Safe Browsing lookups (it only shows the app's own bundled pages).
 - The app stores one setting on your device: the last password-manager format you chose.
 - Unlocked data stays in memory only and is cleared when you tap Change file or leave the app.
 - A CSV is written only when you tap Save CSV and confirm. It is plain text: delete it after you import it.

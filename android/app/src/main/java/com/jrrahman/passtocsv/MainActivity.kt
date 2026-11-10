@@ -273,6 +273,7 @@ class MainActivity : ComponentActivity() {
         const val ASSET_ORIGIN = "https://appassets.androidplatform.net"
         private val SPASS_MIME_TYPES = arrayOf("application/octet-stream", "application/x-spass", "application/spass")
         private val DOWNLOADS_URI: Uri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download")
-        private val SAFE_NAME = Regex("^samsung-pass-[a-z0-9-]+\\.csv$")
+        // Every name the page offers: samsung-pass-<format|cards|notes|addresses>.csv, and passwords.csv (Other).
+        private val SAFE_NAME = Regex("^(samsung-pass-[a-z0-9-]+|passwords)\\.csv$")
     }
 }

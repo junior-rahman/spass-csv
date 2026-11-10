@@ -16,21 +16,33 @@ function bridge(): WebMessageBridge | null {
   return candidate && typeof candidate.postMessage === "function" ? candidate : null;
 }
 
-/** Android save replies must always settle; a lost reply resolves false instead of hanging the UI. */
+/**
+ * Android save replies must always settle; a lost reply resolves false instead of hanging the UI.
+ * The clock only runs while the page is visible: the system "Save to" picker hides the page, and a user may
+ * take minutes there (pick a folder, rename). Once the page is visible again the reply is due quickly.
+ */
 export const SAVE_TIMEOUT_MS = 60_000;
+export const SAVE_RETURN_TIMEOUT_MS = 15_000;
 
 const androidPlatform = (b: WebMessageBridge): Platform => ({
   save(fileName, csv) {
     return new Promise((resolve) => {
       let settled = false;
+      const doc = typeof document === "undefined" ? null : document;
+      const onVisibility = () => {
+        clearTimeout(timer);
+        if (doc?.visibilityState === "visible") timer = setTimeout(() => settle(false), SAVE_RETURN_TIMEOUT_MS);
+      };
       const settle = (ok: boolean) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
+        doc?.removeEventListener("visibilitychange", onVisibility);
         b.onmessage = null;
         resolve(ok);
       };
-      const timer = setTimeout(() => settle(false), SAVE_TIMEOUT_MS);
+      let timer = setTimeout(() => settle(false), SAVE_TIMEOUT_MS);
+      doc?.addEventListener("visibilitychange", onVisibility);
       b.onmessage = (event) => {
         try {
           const reply = JSON.parse(event.data) as { type: string; ok: boolean };
@@ -47,8 +59,14 @@ const androidPlatform = (b: WebMessageBridge): Platform => ({
   }
 });
 
+/** Android WebView without the save bridge (very old WebView): a blob download does nothing there. */
+function isAndroidWebView(): boolean {
+  return typeof navigator !== "undefined" && /; wv\)/.test(navigator.userAgent);
+}
+
 const webPlatform: Platform = {
   async save(fileName, csv) {
+    if (isAndroidWebView()) return false;
     try {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);

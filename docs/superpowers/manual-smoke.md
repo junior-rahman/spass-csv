@@ -45,3 +45,13 @@ Synthetic export: generate `/tmp/sample.spass` with `encryptSpass(samplePlaintex
 - [ ] Vault, no sheet open, press Back → "Leave and clear?" sheet. Stay (or Back again) keeps the vault. Leave → app closes / goes to background; reopening shows home.
 - [ ] Possible merges list: Dismiss on a row hides it, snackbar "Dismissed …" with Undo; the overview line count drops and disappears at zero. Merge preview: "Not the same login · Dismiss" does the same. Change file forgets dismissals.
 - [ ] Play Console → App bundle explorer → dependencies list androidx.fragment 1.9.1 (no 1.0.0 warning).
+
+## 2.0.21 checks (APK)
+- [ ] Other → Save CSV: the system picker suggests `passwords.csv` (not `samsung-pass.csv`).
+- [ ] Save CSV, wait over a minute in the "Save to" picker, then save: import guide + delete reminder appear (no "Couldn't save").
+- [ ] Android 10 device: keyboard never covers the password field or Edit inputs (adjustResize).
+- [ ] Edit → Website "my bank" → Save changes: red "That isn't a website…" under Website; nothing erased. `münchen.de` saves.
+- [ ] Other → Save CSV → Delete all → Undo on the snackbar: Save confirm closes; tapping Save CSV again warns about the restored logins.
+- [ ] Delete every login → Save CSV: "No logins to save." and no file.
+- [ ] TalkBack / keyboard with a sheet open: focus never reaches the page behind it.
+- [ ] Android 16 (API 36) gesture Back: predictive back still closes sheets and shows "Leave and clear?" from the vault.

@@ -7,7 +7,8 @@ const FORMULA_LEAD = /^[=+\-@\t\r]/;
 export function cell(value: string, formulaSafe = true): string {
   let v = value;
   if (formulaSafe && FORMULA_LEAD.test(v)) v = `'${v}`;
-  if (/[",\r\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+  // Leading/trailing whitespace is quoted too, so importers that trim unquoted cells keep it (passwords).
+  if (/[",\r\n]|^\s|\s$/.test(v)) return `"${v.replace(/"/g, '""')}"`;
   return v;
 }
 

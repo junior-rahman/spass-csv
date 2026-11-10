@@ -21,6 +21,7 @@ import {
   loginsToCsv,
   mergeLogins,
   needsLook,
+  normalizeUserUrl,
   notesToCsv,
   resolvedTitle,
   siteKey,
@@ -48,7 +49,7 @@ type Sheet =
   | { kind: "about" }
   | { kind: "destination" }
   | { kind: "import-guide" }
-  | { kind: "edit"; id: string; draft: LoginEdit; showPassword: boolean; after?: AfterEdit; browseQuery?: string }
+  | { kind: "edit"; id: string; draft: LoginEdit; showPassword: boolean; after?: AfterEdit; browseQuery?: string; urlError?: boolean }
   | { kind: "merges" }
   | { kind: "merge"; aId: string; bId: string; choice: MergeChoice; fromList?: boolean }
   | { kind: "leave" }
@@ -161,8 +162,15 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     render();
   };
 
+  /** True while the system file picker is open (a subset of externalPending). */
+  let picking = false;
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && !state.externalPending && state.vault) wipe();
+    // Back from the file picker: if the WebView fired neither change, cancel nor focus, don't stay "pending"
+    // forever (that would swallow Back on the home screen).
+    if (document.visibilityState === "visible" && picking) {
+      setTimeout(() => { if (picking) { picking = false; state.externalPending = false; } }, 1500);
+    }
   });
 
   const formatInfo = () => FORMATS.find((f) => f.id === state.format)!;
@@ -206,6 +214,12 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
   function beginPrimarySave() {
     const vault = state.vault;
     if (!vault || state.externalPending) return;
+    // Nothing to write (all logins deleted, or an export with only cards/addresses): don't save an empty file.
+    if (!vault.logins.length && !(state.format === "bitwarden" && vault.notes.length)) {
+      state.toast = { text: "No logins to save." };
+      render();
+      return;
+    }
     if (needsLook(vault.logins, state.format).length) {
       state.sheet = { kind: "needs-look" };
       render();
@@ -384,11 +398,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const input = el("input", { type: "file", accept: ".spass", id: "spass-file", class: "visually-hidden" }) as HTMLInputElement;
     input.addEventListener("click", () => {
       state.externalPending = true;
+      picking = true;
       // Picker cancel fires no change event on some WebViews; clear pending once focus returns.
-      window.addEventListener("focus", () => setTimeout(() => { state.externalPending = false; }, 1000), { once: true });
+      window.addEventListener("focus", () => setTimeout(() => { picking = false; state.externalPending = false; }, 1000), { once: true });
     });
-    input.addEventListener("cancel", () => { state.externalPending = false; });
+    input.addEventListener("cancel", () => { picking = false; state.externalPending = false; });
     input.addEventListener("change", () => {
+      picking = false;
       state.externalPending = false;
       const picked = input.files?.[0] ?? null;
       input.value = "";
@@ -627,14 +643,18 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const back = () => { returnAfter(s.after, s.browseQuery); render(); };
     const gaps = lookGaps(login, state.format);
     const title = s.draft.name || resolvedTitle(login);
-    const field = (key: keyof LoginEdit, id: string, label: string, opts: { type?: string; placeholder?: string; hint?: string; trailing?: HTMLElement } = {}) => {
-      const input = el("input", { id, type: opts.type ?? "text", autocomplete: "off", spellcheck: "false", placeholder: opts.placeholder ?? "" }) as HTMLInputElement;
+    const field = (key: keyof LoginEdit, id: string, label: string, opts: { type?: string; placeholder?: string; hint?: string; error?: string; trailing?: HTMLElement } = {}) => {
+      const input = el("input", {
+        id, type: opts.type ?? "text", autocomplete: "off", spellcheck: "false", placeholder: opts.placeholder ?? "",
+        ...(opts.error ? { "aria-invalid": "true", "aria-describedby": `${id}-error` } : {})
+      }) as HTMLInputElement;
       input.value = s.draft[key];
       input.addEventListener("input", () => { s.draft[key] = input.value; });
       return el("div", { class: "ef" }, [
         el("label", { for: id }, [label]),
         el("div", { class: "in" }, [input, opts.trailing ?? null]),
-        opts.hint ? el("p", { class: "hint" }, [opts.hint]) : null
+        opts.error ? el("p", { class: "hint error", id: `${id}-error`, role: "alert", "data-testid": `${id}-error` }, [opts.error])
+          : opts.hint ? el("p", { class: "hint" }, [opts.hint]) : null
       ]);
     };
     const dest = state.format === "other" ? "your password manager" : formatInfo().label;
@@ -645,7 +665,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         el("button", { type: "button", class: "x", "aria-label": "Close", onclick: back }, [icon("close")])
       ]),
       field("name", "edit-title", "Title", { placeholder: "Add a title", hint: gaps.includes("title") ? "Add a title so you can find this login." : undefined }),
-      field("url", "edit-url", "Website", { type: "url", placeholder: "example.com", hint: gaps.includes("url") ? `Add a website so ${dest} can match this login.` : undefined }),
+      field("url", "edit-url", "Website", { type: "url", placeholder: "example.com", error: s.urlError ? "That isn't a website. Enter one like example.com, or leave it empty." : undefined, hint: gaps.includes("url") ? `Add a website so ${dest} can match this login.` : undefined }),
       field("username", "edit-username", "Username", { placeholder: "Add a username", hint: gaps.includes("username") ? "Add the username or email you sign in with." : undefined }),
       field("password", "edit-password", "Password", {
         type: s.showPassword ? "text" : "password",
@@ -655,6 +675,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       el("div", { class: "acts" }, [
         el("button", { type: "button", class: "danger-btn", "data-testid": "edit-delete", onclick: () => deleteLogin(login.id) }, ["Delete"]),
         el("button", { type: "button", class: "cta", "data-testid": "edit-save", onclick: () => {
+          // Never silently erase what was typed: text that isn't a website keeps the sheet open with an error.
+          if (s.draft.url.trim() && !normalizeUserUrl(s.draft.url)) {
+            s.urlError = true;
+            state.focusNext = "edit-url";
+            render();
+            return;
+          }
           applyLoginEdit(login, s.draft);
           returnAfter(s.after, s.browseQuery);
           render();
@@ -973,7 +1000,13 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     if (!t) return null;
     return el("div", { class: "toast", role: "status", "data-testid": "snackbar" }, [
       el("span", {}, [t.text]),
-      t.undo ? el("button", { type: "button", "data-testid": "undo", onclick: () => { t.undo!(); state.toast = null; render(); } }, ["Undo"]) : null
+      t.undo ? el("button", { type: "button", "data-testid": "undo", onclick: () => {
+        t.undo!();
+        state.toast = null;
+        // The open Save confirm holds a CSV built before the undo; close it so a stale file is never written.
+        if (state.sheet?.kind === "save" && state.sheet.primary) state.sheet = null;
+        render();
+      } }, ["Undo"]) : null
     ]);
   }
 
@@ -1005,7 +1038,8 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       : current === "password" ? passwordStage()
       : homeStage();
     root.replaceChildren(
-      el("div", { class: "app", "data-stage": current }, [view]),
+      // With a sheet open, the page behind it is inert: Tab / TalkBack stay inside the dialog.
+      el("div", { class: "app", "data-stage": current, inert: state.sheet !== null }, [view]),
       sheet() ?? el("span"),
       toast() ?? el("span")
     );

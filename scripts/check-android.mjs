@@ -34,6 +34,18 @@ if (!/androidx\.fragment:fragment/.test(gradle)) fail.push("declare androidx.fra
 if (!/deleteDocument/.test(activity)) fail.push("failed SAF writes must delete the empty document");
 const manifestCfg = manifest.match(/android:configChanges="([^"]+)"/)?.[1] ?? "";
 for (const c of ["screenSize", "smallestScreenSize", "screenLayout", "orientation"]) if (!manifestCfg.split("|").includes(c)) fail.push(`configChanges must include ${c} (foldables / multi-window must not recreate the WebView and drop the vault)`);
+if (!/android\.webkit\.WebView\.MetricsOptOut"\s+android:value="true"/.test(manifest)) fail.push("WebView metrics must be opted out (no telemetry)");
+if (!/android\.webkit\.WebView\.EnableSafeBrowsing"\s+android:value="false"/.test(manifest)) fail.push("Safe Browsing lookups must be off (asset-only WebView)");
+{
+  // Every file name the page can save must pass MainActivity's SAFE_NAME gate (else Android renames it).
+  const safe = activity.match(/SAFE_NAME = Regex\("(.+)"\)/)?.[1]?.replace(/\\\\/g, "\\");
+  const formats = readFileSync("web/src/lib/formats.ts", "utf8");
+  const app = readFileSync("web/src/ui/app.ts", "utf8");
+  const names = [...formats.matchAll(/fileName: "([^"]+)"/g), ...app.matchAll(/fileName = "([^"]+)"/g)].map((m) => m[1]);
+  if (!safe || names.length < 8) fail.push("could not read SAFE_NAME or the page's CSV file names");
+  else for (const n of names) if (!new RegExp(safe).test(n)) fail.push(`SAFE_NAME rejects ${n}; Android would save it under another name`);
+}
+if (!/android:windowSoftInputMode="adjustResize"/.test(manifest)) fail.push("adjustResize required: Android 10 (API 29) only reports keyboard (IME) insets to edge-to-edge apps in adjustResize");
 if (existsSync("version.json")) fail.push("version.json updater manifest must be deleted");
 
 if (fail.length) {

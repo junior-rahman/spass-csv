@@ -14,7 +14,20 @@ function pick(row: Record<string, string>, keys: string[]): string {
   return "";
 }
 
-const BARE_DOMAIN = /^[a-z0-9.-]+\.[a-z]{2,}([/:?#].*)?$/i;
+/** Like pick, but never trims: a password's leading/trailing spaces are part of the secret. */
+function pickExact(row: Record<string, string>, keys: string[]): string {
+  for (const key of keys) {
+    const value = (row[key] ?? "").replace(/\u0000/g, "");
+    if (value.trim() === "&&&NULL&&&") continue;
+    if (value.trim()) return value;
+  }
+  return "";
+}
+
+/** Bare host: ASCII or internationalised labels (münchen.de, xn--…), letter TLD or punycode TLD (xn--p1ai). */
+const BARE_DOMAIN = /^[\p{L}\p{N}.-]+\.(\p{L}{2,}|xn--[a-z0-9-]+)\.?([/:?#].*)?$/iu;
+/** localhost with an optional port or path (local dev servers, router UIs). */
+const BARE_LOCALHOST = /^localhost(:\d{1,5})?([/?#].*)?$/i;
 const OCTET = "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
 /** Bare IPv4 host (router / NAS logins), optional port or path. */
 const BARE_IPV4 = new RegExp(`^${OCTET}(\\.${OCTET}){3}([/:?#].*)?$`);
@@ -24,7 +37,7 @@ export function normalizeUserUrl(input: string): string {
   const value = input.trim();
   if (!value) return "";
   if (/^https?:\/\//i.test(value)) return value;
-  if (BARE_DOMAIN.test(value) || BARE_IPV4.test(value)) return `https://${value}`;
+  if (BARE_DOMAIN.test(value) || BARE_IPV4.test(value) || BARE_LOCALHOST.test(value)) return `https://${value}`;
   return "";
 }
 
@@ -75,7 +88,7 @@ export function toVault(parsed: ParsedSpass, alreadyPlain = false): Vault {
     const rawUrl = pick(row, ["host_url", "origin_url", "url", "action_url"]);
     const resolved = resolveUrl(rawUrl, packageName);
     const username = pick(row, ["username_value", "username", "email", "user_id"]);
-    const password = pick(row, ["password_value", "password"]);
+    const password = pickExact(row, ["password_value", "password"]);
     const note = pick(row, ["credential_memo", "note", "notes", "memo"]);
     const name = pick(row, ["title", "name", "display_name"]) || resolved.appLabel || rawUrl || username;
     const otp = otpFields(pick(row, ["otp", "totp", "otp_secret", "one_time_password"]), name, username);

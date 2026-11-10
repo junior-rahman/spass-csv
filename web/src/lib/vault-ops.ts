@@ -5,7 +5,7 @@ import type { FormatId, Login } from "./types";
 function hostOf(value: string): string {
   const v = value.trim().toLowerCase();
   if (!v) return "";
-  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//.test(v) ? v : /^[a-z0-9.-]+\.[a-z]{2,}([/:?#].*)?$/.test(v) ? `https://${v}` : "";
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//.test(v) ? v : normalizeUserUrl(v);
   if (!withScheme) return "";
   try {
     return new URL(withScheme).hostname.replace(/^www\./, "");
