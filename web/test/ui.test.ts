@@ -196,12 +196,13 @@ describe("destination chip + sheet", () => {
 });
 
 describe("organize vault", () => {
-  it("shows an overview, Needs a look as one tap, a merge suggestion, and no login dump", async () => {
+  it("shows an overview, Needs a look as one tap, one merge line, and no login dump", async () => {
     const { root } = setup();
     await unlock(root, await groveExport());
     expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 3");
     expect(root.querySelector("[data-testid=needs-look-item]")).toBeNull();
-    expect(q(root, "[data-testid=merge-suggestion]").textContent).toMatch(/2 amazon\.com logins look like.*the same site.*Merge/);
+    expect(all(root, "[data-testid=merge-suggestions]")).toHaveLength(1);
+    expect(q(root, "[data-testid=merge-suggestions]").textContent).toMatch(/^Possible merge\s*amazon\.com$/);
     expect(q(root, "[data-testid=logins-count]").textContent).toBe("4");
     expect(q(root, "[data-testid=places-count]").textContent).toBe("across 3 places");
     expect(root.querySelector("[data-testid=login]")).toBeNull();
@@ -317,7 +318,8 @@ describe("organize vault", () => {
   it("merge sheet uses real values, lets you pick per field, and leaves one login", async () => {
     const { root } = setup();
     await unlock(root, await groveExport());
-    click(root, "[data-testid=merge-suggestion]");
+    click(root, "[data-testid=merge-suggestions]");
+    expect(document.querySelector("[data-testid=sheet-merges]")).toBeNull();
     const sheet = q(document.body, "[data-testid=sheet-merge]");
     expect(sheet.querySelector("h2")!.textContent).toBe("Merge amazon.com");
     expect(sheet.textContent).toContain("One login will be saved. The other will be removed.");
@@ -330,8 +332,9 @@ describe("organize vault", () => {
     click(sheet, "[data-field=name][data-side=b]");
     click(document.body, "[data-testid=merge-confirm]");
     expect(document.querySelector("[data-testid=sheet-merge]")).toBeNull();
-    expect(root.querySelector("[data-testid=merge-suggestion]")).toBeNull();
+    expect(root.querySelector("[data-testid=merge-suggestions]")).toBeNull();
     expect(q(root, "[data-testid=logins-count]").textContent).toBe("3");
+    expect(q(document.body, "[data-testid=snackbar]").textContent).toContain("Merged");
     expect(q(root, "[data-testid=needs-look-count]").textContent).toBe("Needs a look · 3");
     click(root, "[data-testid=browse-logins]");
     expect(all(document.body, "[data-testid=sheet-browse] [data-testid=login]").filter((r) => /amazon/i.test(r.textContent!))).toHaveLength(1);
@@ -348,7 +351,73 @@ describe("organize vault", () => {
     ].join("\n");
     const { root } = setup();
     await unlock(root, await encryptSpass(plain, TEST_PASSWORD));
-    expect(root.querySelector("[data-testid=merge-suggestion]")).toBeNull();
+    expect(root.querySelector("[data-testid=merge-suggestions]")).toBeNull();
+  });
+
+  it("collapses several merge suggestions into one line that opens a list, with undo", async () => {
+    const row = (...cells: string[]) => cells.map((c) => (c ? b64(c) : "")).join(";");
+    const plain = [
+      "25", "true;true;true;true", "false", "next_table",
+      "title;host_url;username_value;password_value;credential_memo;otp",
+      row("Amazon", "https://amazon.com", "shop@example.com", "a1", "", ""),
+      row("Amazon shopping", "https://www.amazon.com", "shop@example.com", "a2", "", ""),
+      row("Netflix", "https://netflix.com", "n@example.com", "n1", "", ""),
+      row("Netflix app", "com.netflix.mediaclient", "n@example.com", "n2", "", ""),
+      row("GitHub", "https://github.com", "ada", "g1", "", ""),
+      ""
+    ].join("\n");
+    const { root } = setup();
+    await unlock(root, await encryptSpass(plain, TEST_PASSWORD));
+    const line = all(root, "[data-testid=merge-suggestions]");
+    expect(line).toHaveLength(1);
+    expect(q(line[0], "[data-testid=merge-count]").textContent).toBe("2 possible merges");
+    expect(line[0].textContent).toContain("amazon.com, netflix.com");
+    expect(line[0].getAttribute("aria-label")).toBe("2 possible merges");
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("5");
+
+    click(root, "[data-testid=merge-suggestions]");
+    const list = q(document.body, "[data-testid=sheet-merges]");
+    expect(list.querySelector("h2")!.textContent).toBe("Possible merges · 2");
+    const items = all(list, "[data-testid=merge-item]");
+    expect(items.map((i) => i.textContent)).toEqual([
+      expect.stringMatching(/amazon\.com.*2 logins · Amazon · Amazon shopping.*Merge/),
+      expect.stringMatching(/netflix\.com.*2 logins.*Merge/)
+    ]);
+
+    items[0].click();
+    expect(q(document.body, "[data-testid=sheet-merge] h2").textContent).toBe("Merge amazon.com");
+    expect(q(document.body, "[data-testid=merge-cancel]").textContent).toBe("Back");
+    click(document.body, "[data-testid=merge-cancel]");
+    expect(all(document.body, "[data-testid=sheet-merges] [data-testid=merge-item]")).toHaveLength(2);
+
+    all(document.body, "[data-testid=merge-item]")[0].click();
+    click(document.body, "[data-testid=merge-confirm]");
+    // Back on the list with one left; the overview line says so.
+    expect(all(document.body, "[data-testid=sheet-merges] [data-testid=merge-item]")).toHaveLength(1);
+    expect(q(root, "[data-testid=merge-count]").textContent).toBe("Possible merge");
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("4");
+
+    click(document.body, "[data-testid=merge-item]");
+    click(document.body, "[data-testid=merge-confirm]");
+    expect(document.querySelector("[data-testid=sheet-merges]")).toBeNull();
+    expect(document.querySelector("[data-testid=sheet-merge]")).toBeNull();
+    expect(root.querySelector("[data-testid=merge-suggestions]")).toBeNull();
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("3");
+
+    click(document.body, "[data-testid=undo]");
+    expect(q(root, "[data-testid=merge-count]").textContent).toBe("Possible merge");
+    expect(q(root, "[data-testid=logins-count]").textContent).toBe("4");
+  });
+
+  it("keeps the merge line to one compact, ellipsized row", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync("web/src/ui/styles.css", "utf8");
+    const rule = (sel: string) => css.match(new RegExp(`${sel.replace(/[.*]/g, "\\$&")} \\{([^}]*)\\}`))?.[1] ?? "";
+    expect(rule(".merge-row")).toMatch(/height: 52px/);
+    expect(rule(".merge-row .t")).toMatch(/white-space: nowrap/);
+    expect(rule(".merge-row .t")).toMatch(/min-width: 0/);
+    expect(rule(".merge-row .t span")).toMatch(/text-overflow: ellipsis/);
+    expect(css).not.toContain("merge-banner");
   });
 
 });

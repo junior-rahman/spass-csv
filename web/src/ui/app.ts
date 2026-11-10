@@ -44,7 +44,8 @@ type Sheet =
   | { kind: "destination" }
   | { kind: "import-guide" }
   | { kind: "edit"; id: string; draft: LoginEdit; showPassword: boolean; after?: AfterEdit; browseQuery?: string }
-  | { kind: "merge"; aId: string; bId: string; choice: MergeChoice }
+  | { kind: "merges" }
+  | { kind: "merge"; aId: string; bId: string; choice: MergeChoice; fromList?: boolean }
   | { kind: "extras"; which: "cards" | "notes" | "addresses" };
 
 interface Toast { text: string; undo?: () => void }
@@ -255,22 +256,34 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     }
   }
 
-  function openMerge(group: Login[]) {
+  function openMerge(group: Login[], fromList = false) {
     // A is the more complete record (fewest gaps), so defaults keep the better data.
     const [a, b] = [...group].sort((x, y) => lookGaps(x, state.format).length - lookGaps(y, state.format).length);
-    state.sheet = { kind: "merge", aId: a.id, bId: b.id, choice: defaultMergeChoice(a, b) };
+    state.sheet = { kind: "merge", aId: a.id, bId: b.id, choice: defaultMergeChoice(a, b), fromList };
     render();
   }
 
-  function confirmMerge(aId: string, bId: string, choice: MergeChoice) {
+  /** One suggestion opens its merge preview; several open the list. */
+  function openMergeSuggestions() {
+    const groups = state.vault ? duplicateGroups(state.vault.logins) : [];
+    if (groups.length === 1) openMerge(groups[0]);
+    else if (groups.length > 1) { state.sheet = { kind: "merges" }; render(); }
+  }
+
+  function confirmMerge(aId: string, bId: string, choice: MergeChoice, fromList = false) {
     const vault = state.vault;
     const a = findLogin(aId);
     const b = findLogin(bId);
     if (!vault || !a || !b) return;
+    const before = vault.logins.slice();
     const merged = mergeLogins(a, b, choice);
     vault.logins = vault.logins.filter((l) => l.id !== bId).map((l) => (l.id === aId ? merged : l));
-    state.sheet = null;
-    state.toast = { text: `Merged ${resolvedTitle(merged) || "login"}` };
+    // From the list, go back to it while suggestions remain.
+    state.sheet = fromList && duplicateGroups(vault.logins).length ? { kind: "merges" } : null;
+    state.toast = {
+      text: `Merged ${resolvedTitle(merged) || "login"}`,
+      undo: () => { vault.logins = before.slice(); }
+    };
     render();
   }
 
@@ -467,11 +480,18 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         el("span", { class: "ring-field", "aria-hidden": "true" }),
         el("div", { class: "tray-lbl" }, [el("b", { "data-testid": "needs-look-count" }, [`Needs a look · ${look.length}`]), el("span", {}, ["Tap to fix"])])
       ]) : null,
-      ...groups.map((group) => el("button", { type: "button", class: "merge-banner", "data-testid": "merge-suggestion", onclick: () => openMerge(group) }, [
+      groups.length ? el("button", {
+        type: "button", class: "merge-row", "data-testid": "merge-suggestions",
+        "aria-label": groups.length === 1 ? `Possible merge: ${groupName(groups[0])}` : `${groups.length} possible merges`,
+        onclick: openMergeSuggestions
+      }, [
         el("span", { class: "two", "aria-hidden": "true" }),
-        el("span", { class: "t" }, [`${group.length} ${groupName(group)} logins look like`, el("span", {}, ["the same site"])]),
-        el("b", {}, ["Merge ›"])
-      ])),
+        el("span", { class: "t" }, [
+          el("b", { "data-testid": "merge-count" }, [groups.length === 1 ? "Possible merge" : `${groups.length} possible merges`]),
+          el("span", {}, [groups.map(groupName).join(", ")])
+        ]),
+        icon("chevron_right")
+      ]) : null,
       complete.length ? el("button", { type: "button", class: "browse-btn", "data-testid": "browse-logins", onclick: () => { state.sheet = { kind: "browse", query: "" }; render(); } }, [
         "Browse logins", icon("chevron_right")
       ]) : null,
@@ -650,9 +670,33 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       el("p", { class: "mg-help" }, ["One login will be saved. The other will be removed."]),
       ...rows,
       el("div", { class: "acts" }, [
-        el("button", { type: "button", class: "ghost", "data-testid": "merge-cancel", onclick: close }, ["Cancel"]),
-        el("button", { type: "button", class: "cta", "data-testid": "merge-confirm", onclick: () => confirmMerge(a.id, b.id, s.choice) }, ["Merge"])
+        el("button", { type: "button", class: "ghost", "data-testid": "merge-cancel", onclick: s.fromList ? () => { state.sheet = { kind: "merges" }; render(); } : close }, [s.fromList ? "Back" : "Cancel"]),
+        el("button", { type: "button", class: "cta", "data-testid": "merge-confirm", onclick: () => confirmMerge(a.id, b.id, s.choice, s.fromList) }, ["Merge"])
       ])
+    ];
+  }
+
+  function mergesSheet(close: () => void): (HTMLElement | null)[] {
+    const groups = duplicateGroups(state.vault!.logins);
+    return [
+      el("div", { class: "sheet-head" }, [
+        el("h2", {}, [groups.length ? `Possible merges · ${groups.length}` : "Possible merges"]),
+        el("button", { type: "button", class: "x", "aria-label": "Close", onclick: close }, [icon("close")])
+      ]),
+      el("p", { class: "mg-help" }, ["Same website or app, same username. Tap one to choose what to keep."]),
+      groups.length
+        ? el("ul", { class: "rows", "data-testid": "merge-list" }, groups.map((g) => el("li", {}, [
+          el("button", { type: "button", class: "row", "data-testid": "merge-item", onclick: () => openMerge(g, true) }, [
+            el("span", { class: "two", "aria-hidden": "true" }),
+            el("span", { class: "t" }, [
+              el("b", {}, [groupName(g)]),
+              el("span", {}, [`${g.length} logins · ${g.map((l) => resolvedTitle(l) || "Untitled").join(" · ")}`])
+            ]),
+            el("span", { class: "mg-go" }, ["Merge"]),
+            icon("chevron_right")
+          ])
+        ])))
+        : el("p", { class: "empty" }, ["No possible merges left."])
     ];
   }
 
@@ -784,6 +828,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     else if (s.kind === "browse") body = browseSheet(s, close);
     else if (s.kind === "edit") body = editSheet(s, close);
     else if (s.kind === "merge") body = mergeSheet(s, close);
+    else if (s.kind === "merges") body = mergesSheet(close);
     else if (s.kind === "extras") body = extrasSheet(s, close);
     else if (s.kind === "destination") body = destinationSheet(close);
     else if (s.kind === "save") {

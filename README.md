@@ -24,7 +24,7 @@ Not affiliated with Samsung.
 5. The vault shows how many logins are ready and across how many places — not the full list up front.
    - **Needs a look** — tap to add a missing title, username, or website. The app never guesses websites, and it never overwrites a real website from your export.
    - **Browse logins** — search and edit ready logins, grouped by website.
-   - If two logins share the same website (or app) **and** the same username, a merge suggestion appears. You pick which fields to keep.
+   - If two logins share the same website (or app) **and** the same username, the overview shows one **Possible merges** line. Tap it to see each suggestion, pick which fields to keep, and Merge (with undo).
    - Addresses, cards, and notes open from tiles. You can preview them, save a separate CSV, or delete an item (with undo). Bitwarden notes stay in the main file.
 6. Tap **Save CSV** and confirm. A step-by-step guide for your password manager appears — follow it to import.
    - When saving to **Other**, missing titles, usernames, or websites warn first. You can **Add** the missing labels, **Delete all** those incomplete logins, or **Keep them blank** (empty CSV cells — no placeholders).

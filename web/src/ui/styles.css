@@ -115,10 +115,14 @@ button:focus-visible, label:focus-visible, input:focus-visible { outline: 3px so
 .browse-find input { width: 100%; height: 48px; border-radius: 14px; padding: 0 16px; background: var(--soil); border: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); color: var(--cream); font: 400 16px Outfit, sans-serif; }
 .place-lbl { font-size: 12.5px; font-weight: 600; color: var(--muted); padding: 12px 4px 4px; }
 .look-rows { margin-top: 8px; }
-.merge-banner { width: 100%; margin-top: 10px; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 18px; background: color-mix(in srgb, var(--olive) 12%, var(--soil)); border: 1px solid color-mix(in srgb, var(--olive) 35%, transparent); font-size: 13.5px; text-align: left; }
-.merge-banner .t { flex: 1; line-height: 1.3; }
-.merge-banner .t span { display: block; color: var(--muted); }
-.merge-banner b { font-weight: 600; color: var(--fern); }
+/* Merge suggestions: always one compact line on the overview (ellipsized names), list in a sheet. */
+.merge-row { width: 100%; height: 52px; margin-top: 10px; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 14px; border-radius: 18px; background: color-mix(in srgb, var(--olive) 12%, var(--soil)); border: 1px solid color-mix(in srgb, var(--olive) 35%, transparent); color: inherit; font: 400 13.5px Outfit, sans-serif; text-align: left; }
+.merge-row .two { transform: scale(.85); margin: 0 -3px; }
+.merge-row .t { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; overflow: hidden; }
+.merge-row .t b { flex: none; font-size: 14.5px; font-weight: 600; color: var(--fern); }
+.merge-row .t span { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.merge-row > .icon { flex: none; width: 16px; height: 16px; opacity: .6; }
+.mg-go { flex: none; font-size: 13px; font-weight: 600; color: var(--fern); }
 .chip { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 12px; border-radius: 20px; background: color-mix(in srgb, var(--cream) 6%, var(--soil)); border: 1px solid color-mix(in srgb, var(--cream) 10%, transparent); font: 400 13.5px Outfit, sans-serif; }
 .chip b { font-weight: 600; }
 .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--olive); box-shadow: 0 0 0 3px color-mix(in srgb, var(--olive) 30%, transparent); }
