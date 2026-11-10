@@ -10,6 +10,7 @@ import android.graphics.Color
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.content.Context
+import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
@@ -128,6 +129,12 @@ class MainActivity : ComponentActivity() {
         }
         webView.setBackgroundColor(CANVAS)
         setContentView(container)
+        // Autofill (Google / Samsung Pass) must not offer to save or fill while the user edits
+        // logins. Trade-off accepted: the export password also cannot be autofilled.
+        val noAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+        webView.importantForAutofill = noAutofill
+        container.importantForAutofill = noAutofill
+        window.decorView.importantForAutofill = noAutofill
         ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())

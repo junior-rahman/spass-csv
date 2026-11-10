@@ -67,3 +67,8 @@ Synthetic export: generate `/tmp/sample.spass` with `encryptSpass(samplePlaintex
 - [ ] App logins saved by Samsung Pass without a title (e.g. Netflix app) show the app name, not `com.netflix.mediaclient`.
 - [ ] Edit → Username on Gboard / Samsung Keyboard: first letter stays lowercase; no autocorrect.
 - [ ] Type a made-up username in Edit, save, then type its first letters in another app: the keyboard does not suggest it (no personalised learning).
+
+## 2.0.24 checks (APK)
+- [ ] Edit a login (username / website / password / notes): Google or Samsung Pass autofill does not offer to save or fill.
+- [ ] Export-password step: a password manager does not offer to autofill the export password (accepted trade-off).
+- [ ] Username still types lowercase with no autocorrect; keyboard still does not learn typed secrets.

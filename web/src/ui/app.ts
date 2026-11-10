@@ -37,6 +37,14 @@ import { el, icon, pRingMark } from "./dom";
 import { detectPlatform, type Platform } from "./platform";
 import { loadFormat, storeFormat } from "./prefs";
 
+/** Ask password managers not to offer save/fill. Always "off" — never "new-password". */
+const AUTOFILL_OFF = {
+  autocomplete: "off",
+  "data-1p-ignore": "true",
+  "data-lpignore": "true"
+} as const;
+
+
 type Status = "form" | "working" | "done";
 type Stage = "home" | "password" | "unlocking" | "vault";
 type AfterEdit = "look" | "browse";
@@ -459,7 +467,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const input = el("input", {
       type: state.showPassword ? "text" : "password",
       id: "spass-password",
-      autocomplete: "off",
+      ...AUTOFILL_OFF,
       spellcheck: "false",
       autocapitalize: "off",
       autocorrect: "off",
@@ -648,7 +656,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const field = (key: keyof LoginEdit, id: string, label: string, opts: { type?: string; placeholder?: string; hint?: string; error?: string; trailing?: HTMLElement; multiline?: boolean; verbatim?: boolean } = {}) => {
       // Notes are multi-line: an <input> would silently strip their line breaks on Save changes.
       const input = el(opts.multiline ? "textarea" : "input", {
-        id, ...(opts.multiline ? { rows: "3" } : { type: opts.type ?? "text" }), autocomplete: "off", spellcheck: "false", placeholder: opts.placeholder ?? "",
+        id, ...(opts.multiline ? { rows: "3" } : { type: opts.type ?? "text" }), ...AUTOFILL_OFF, spellcheck: "false", placeholder: opts.placeholder ?? "",
         // Usernames, passwords and websites are typed exactly: no auto-capital first letter, no autocorrect.
         ...(opts.verbatim ? { autocapitalize: "off", autocorrect: "off" } : {}),
         ...(opts.error ? { "aria-invalid": "true", "aria-describedby": `${id}-error` } : {})

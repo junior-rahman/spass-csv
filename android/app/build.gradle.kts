@@ -18,8 +18,8 @@ android {
         applicationId = "com.jrrahman.passtocsv"
         minSdk = 29
         targetSdk = 36
-        versionCode = 41
-        versionName = "2.0.23"
+        versionCode = 42
+        versionName = "2.0.24"
     }
 
     // English-only UI: drop library translations.
