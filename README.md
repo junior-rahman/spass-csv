@@ -1,5 +1,7 @@
 # Spcc
 
+<img src="docs/play/art/icon-512.png" width="96" alt="Spcc icon">
+
 **Spass to CSV Converter.** Convert a Samsung Pass `.spass` export into a CSV for 1Password, Google Password Manager, Apple Passwords, Bitwarden, or any other password manager. Everything happens on your phone. Nothing is uploaded. No accounts, analytics, or telemetry.
 
 Not affiliated with Samsung.
@@ -8,6 +10,10 @@ Not affiliated with Samsung.
 
 - **Android app:** [Google Play](https://play.google.com/store/apps/details?id=com.jrrahman.passtocsv) — **$2.99 one-time**, yours for life, no subscription, no ads, no in-app purchases. Installed from Play, the app shows Play's in-app update prompt (Play downloads and installs; the app contacts Google Play only for this). Conversion stays on-device; the WebView has no network.
 - **Developers:** this repository is the full source code under the [MIT License](LICENSE). Build it yourself (see **Develop**). No prebuilt APK/AAB files are published here.
+
+## Screenshots
+
+<img src="docs/play/art/phone-01-overview.png" width="180"> <img src="docs/play/art/phone-02-password.png" width="180"> <img src="docs/play/art/phone-03-destination.png" width="180"> <img src="docs/play/art/phone-04-edit.png" width="180"> <img src="docs/play/art/phone-05-other-warning.png" width="180">
 
 ## Use it
 
@@ -38,6 +44,8 @@ gradle -p android bundleRelease     # signed Play AAB (same signing setup)
 ```
 
 Sources live in `web/src` (TypeScript) and `android/` (Kotlin). Never edit the generated root files by hand.
+
+The launcher icon is an adaptive vector (`android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`): brass P-ring foreground (`drawable/ic_launcher_foreground.xml`), Ember Charcoal `#181716` background, and a monochrome layer for themed icons. Play listing art lives in `docs/play/art/` (see `docs/play/listing.md`).
 
 Build output (`*.apk`, `*.aab`, `dist/`) is gitignored. Signing keys stay local in `android/keystore.properties` (also gitignored).
 

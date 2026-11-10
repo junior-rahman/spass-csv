@@ -17,6 +17,16 @@ Not affiliated with Samsung.
 
 **Data safety:** No data collected. No data shared. Data is not encrypted in transit because none is transmitted.
 
-**Screenshots:** Ember Charcoal (dark). 1) Choose .spass file. 2) Enter export password and Unlock. 3) Overview vault (ready count, Needs a look, Browse logins). 4) Save CSV confirm / import guide.
+**Graphics (Ember Charcoal, since 2.0.17)** — files in `docs/play/art/`:
+- App icon 512×512 (32-bit PNG, opaque): `icon-512.png` — brass P-ring on `#181716`, full-bleed square (Play applies its own mask).
+- Feature graphic 1024×500 (24-bit PNG): `feature-graphic-1024x500.png`.
+- Phone screenshots 1080×1920 (9:16, 24-bit PNG), in this order:
+  1. `phone-01-overview.png` — "Your Samsung Pass vault, ready to move"
+  2. `phone-02-password.png` — "Unlocks on your phone"
+  3. `phone-03-destination.png` — "Pick where it goes"
+  4. `phone-04-edit.png` — "Fix gaps before you save"
+  5. `phone-05-other-warning.png` — "You decide on blanks"
+
+Screens are rendered from the real web UI with demo data (no real logins).
 
 **Privacy policy:** PRIVACY.md (must match the in-app About & privacy sheet).

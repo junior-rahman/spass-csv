@@ -4,6 +4,7 @@
 **Subtitle:** Spass to CSV Converter  
 **Copyright:** © 2026 Juel Hossain. All rights reserved.  
 **Mark:** P-ring icon  
+**Launcher / Play icon (since 2.0.17):** brass `#D9A55B` P-ring on charcoal `#181716` (adaptive vector + monochrome themed layer). In-app mark stays the brass squircle with a charcoal P (`web/src/ui/assets/spcc-mark.png`). No green anywhere in launcher or listing art.  
 **Label lockup:** P2 Soft overlap (icon slightly overlapping text panel)  
 **Palette:** Ember Charcoal (since 2.0.16) — Canvas `#181716`, Sheet `#211F1D`, Brass CTA `#D9A55B` (charcoal label), Amber accent `#EBC58C`, Text `#F5F0E8`, Bronze `#4A3A22`, Caution brick `#B3402F` (text `#F4A89B`), Danger `#FFB1C1`. Full table: `docs/superpowers/specs/2026-11-06-night-grove-design.md` §0.  
 **Previous palette:** Warm Grove / Night Grove — Grove `#3F4F3A`, Olive `#6B8F71`, Fern `#A3C9A8`, Cream `#F7F4EF`, Soil `#1C1917`.  
