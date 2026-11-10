@@ -46,6 +46,7 @@ if (!/android\.webkit\.WebView\.EnableSafeBrowsing"\s+android:value="false"/.tes
   else for (const n of names) if (!new RegExp(safe).test(n)) fail.push(`SAFE_NAME rejects ${n}; Android would save it under another name`);
 }
 if (!/android:windowSoftInputMode="adjustResize"/.test(manifest)) fail.push("adjustResize required: Android 10 (API 29) only reports keyboard (IME) insets to edge-to-edge apps in adjustResize");
+if (!/IME_FLAG_NO_PERSONALIZED_LEARNING/.test(activity) || !/webView = NoLearningWebView\(this\)/.test(activity)) fail.push("WebView must ask the keyboard not to learn (IME_FLAG_NO_PERSONALIZED_LEARNING)");
 if (!/override fun onRenderProcessGone/.test(activity)) fail.push("WebViewClient must handle onRenderProcessGone (renderer crash / OOM kill must not crash the app)");
 if (existsSync("version.json")) fail.push("version.json updater manifest must be deleted");
 

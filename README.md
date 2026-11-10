@@ -48,7 +48,7 @@ gradle -p android assembleRelease   # signed APK; needs JDK 17 + Android SDK 36 
 gradle -p android bundleRelease     # signed Play AAB (same signing setup)
 ```
 
-Toolchain: JDK 17, Gradle 8.13, Android Gradle Plugin 8.11.1, Kotlin 2.0.21, compileSdk/targetSdk 36, minSdk 29. AndroidX: activity 1.13.0, webkit 1.18.0, fragment 1.9.1 (declared explicitly so Play's app-update library no longer pulls fragment 1.0.0). The Android app draws edge-to-edge (target 36) and pads the WebView for system bars, display cutouts, and the keyboard. If the WebView renderer crashes or is killed for memory, the activity recreates itself at the home screen (the unlocked vault died with the renderer) instead of crashing.
+Toolchain: JDK 17, Gradle 8.13, Android Gradle Plugin 8.11.1, Kotlin 2.0.21, compileSdk/targetSdk 36, minSdk 29. AndroidX: activity 1.13.0, webkit 1.18.0, fragment 1.9.1 (declared explicitly so Play's app-update library no longer pulls fragment 1.0.0). The Android app draws edge-to-edge (target 36) and pads the WebView for system bars, display cutouts, and the keyboard. The WebView asks the keyboard not to learn from anything typed (IME_FLAG_NO_PERSONALIZED_LEARNING); username, website and password fields turn off auto-capitalisation and autocorrect. If the WebView renderer crashes or is killed for memory, the activity recreates itself at the home screen (the unlocked vault died with the renderer) instead of crashing.
 
 Sources live in `web/src` (TypeScript) and `android/` (Kotlin). Never edit the generated root files by hand.
 

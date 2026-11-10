@@ -62,3 +62,8 @@ Synthetic export: generate `/tmp/sample.spass` with `encryptSpass(samplePlaintex
 - [ ] Renderer kill: vault open → `adb shell am kill` is not enough; on a debug build run `adb shell dumpsys activity` to find the WebView sandboxed renderer and `adb shell kill <pid>` (root/emulator). App reloads to home instead of closing with "Spcc keeps stopping".
 - [ ] Launcher icon (adaptive + themed) still shows after the `mipmap-anydpi` folder rename.
 - [ ] Apple guide reads Settings → Apps → Safari → Import; 1Password guide reads your name → Import data → CSV File.
+
+## 2.0.23 checks (APK)
+- [ ] App logins saved by Samsung Pass without a title (e.g. Netflix app) show the app name, not `com.netflix.mediaclient`.
+- [ ] Edit → Username on Gboard / Samsung Keyboard: first letter stays lowercase; no autocorrect.
+- [ ] Type a made-up username in Edit, save, then type its first letters in another app: the keyboard does not suggest it (no personalised learning).

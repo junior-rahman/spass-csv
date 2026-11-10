@@ -9,7 +9,10 @@ import android.os.Bundle
 import android.graphics.Color
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.content.Context
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -118,7 +121,7 @@ class MainActivity : ComponentActivity() {
         )
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         WebView.setWebContentsDebuggingEnabled(false)
-        webView = WebView(this)
+        webView = NoLearningWebView(this)
         val container = FrameLayout(this).apply {
             setBackgroundColor(CANVAS)
             addView(webView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
@@ -297,5 +300,18 @@ class MainActivity : ComponentActivity() {
         private val DOWNLOADS_URI: Uri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:Download")
         // Every name the page offers: samsung-pass-<format|cards|notes|addresses>.csv, and passwords.csv (Other).
         private val SAFE_NAME = Regex("^(samsung-pass-[a-z0-9-]+|passwords)\\.csv$")
+    }
+}
+
+/**
+ * Every field in this app can hold a decrypted secret (export password, usernames, revealed passwords, notes).
+ * Ask the keyboard not to learn from them: no personalised dictionary entries, no synced suggestions.
+ */
+@SuppressLint("ViewConstructor") // created in code only, never inflated from XML
+class NoLearningWebView(context: Context) : WebView(context) {
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
+        val connection = super.onCreateInputConnection(outAttrs)
+        outAttrs.imeOptions = outAttrs.imeOptions or EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+        return connection
     }
 }

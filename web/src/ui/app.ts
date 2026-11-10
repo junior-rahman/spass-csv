@@ -461,6 +461,8 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       id: "spass-password",
       autocomplete: "off",
       spellcheck: "false",
+      autocapitalize: "off",
+      autocorrect: "off",
       "aria-describedby": state.error?.field === "password" ? "password-error" : "pw-help",
       "aria-invalid": state.error?.field === "password" ? "true" : "false"
     }) as HTMLInputElement;
@@ -643,10 +645,12 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const back = () => { returnAfter(s.after, s.browseQuery); render(); };
     const gaps = lookGaps(login, state.format);
     const title = s.draft.name || resolvedTitle(login);
-    const field = (key: keyof LoginEdit, id: string, label: string, opts: { type?: string; placeholder?: string; hint?: string; error?: string; trailing?: HTMLElement; multiline?: boolean } = {}) => {
+    const field = (key: keyof LoginEdit, id: string, label: string, opts: { type?: string; placeholder?: string; hint?: string; error?: string; trailing?: HTMLElement; multiline?: boolean; verbatim?: boolean } = {}) => {
       // Notes are multi-line: an <input> would silently strip their line breaks on Save changes.
       const input = el(opts.multiline ? "textarea" : "input", {
         id, ...(opts.multiline ? { rows: "3" } : { type: opts.type ?? "text" }), autocomplete: "off", spellcheck: "false", placeholder: opts.placeholder ?? "",
+        // Usernames, passwords and websites are typed exactly: no auto-capital first letter, no autocorrect.
+        ...(opts.verbatim ? { autocapitalize: "off", autocorrect: "off" } : {}),
         ...(opts.error ? { "aria-invalid": "true", "aria-describedby": `${id}-error` } : {})
       }) as HTMLInputElement;
       input.value = s.draft[key];
@@ -666,10 +670,11 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         el("button", { type: "button", class: "x", "aria-label": "Close", onclick: back }, [icon("close")])
       ]),
       field("name", "edit-title", "Title", { placeholder: "Add a title", hint: gaps.includes("title") ? "Add a title so you can find this login." : undefined }),
-      field("url", "edit-url", "Website", { type: "url", placeholder: "example.com", error: s.urlError ? "That isn't a website. Enter one like example.com, or leave it empty." : undefined, hint: gaps.includes("url") ? `Add a website so ${dest} can match this login.` : undefined }),
-      field("username", "edit-username", "Username", { placeholder: "Add a username", hint: gaps.includes("username") ? "Add the username or email you sign in with." : undefined }),
+      field("url", "edit-url", "Website", { type: "url", verbatim: true, placeholder: "example.com", error: s.urlError ? "That isn't a website. Enter one like example.com, or leave it empty." : undefined, hint: gaps.includes("url") ? `Add a website so ${dest} can match this login.` : undefined }),
+      field("username", "edit-username", "Username", { verbatim: true, placeholder: "Add a username", hint: gaps.includes("username") ? "Add the username or email you sign in with." : undefined }),
       field("password", "edit-password", "Password", {
         type: s.showPassword ? "text" : "password",
+        verbatim: true,
         trailing: el("button", { type: "button", class: "icon-btn", "aria-label": s.showPassword ? "Hide password" : "Show password", onclick: () => { s.showPassword = !s.showPassword; render(); } }, [icon(s.showPassword ? "visibility_off" : "visibility")])
       }),
       field("note", "edit-notes", "Notes", { placeholder: "Optional", multiline: true }),

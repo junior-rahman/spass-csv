@@ -15,6 +15,7 @@ Locked by `web/test/csv.test.ts` (exact header strings + no-BOM test).
   (1Password's "You missed required labels… Username, Password, Website") fail to auto-detect the header row.
   Cards/addresses/notes spreadsheets keep the BOM for Excel.
 - No spaces after commas in headers; CRLF line endings; RFC 4180 quoting. Cells with leading/trailing whitespace are quoted (2.0.21) so a password like `" pw "` survives importers that trim unquoted cells; passwords are never trimmed on read either.
+- Title source: Samsung Pass `title`, else `app_name` (app logins often have no title), else the package / URL / username (2.0.23).
 - Non-empty: Title never empty (`displayTitle` → site/username/`no title`); Username never empty (`no username`);
   Google URL never empty (`no url`); others leave blank URL. Password never invented. Pre-save warning stays.
 - TOTP: full `otpauth://` URI goes in OTPAuth (Apple) / Notes as `OTP: …` (1Password) / login_totp (Bitwarden); otherwise appended to notes.

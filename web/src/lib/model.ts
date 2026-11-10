@@ -90,7 +90,7 @@ export function toVault(parsed: ParsedSpass, alreadyPlain = false): Vault {
     const username = pick(row, ["username_value", "username", "email", "user_id"]);
     const password = pickExact(row, ["password_value", "password"]);
     const note = pick(row, ["credential_memo", "note", "notes", "memo"]);
-    const name = pick(row, ["title", "name", "display_name"]) || resolved.appLabel || rawUrl || username;
+    const name = pick(row, ["title", "name", "display_name", "app_name"]) || resolved.appLabel || rawUrl || username;
     const otp = otpFields(pick(row, ["otp", "totp", "otp_secret", "one_time_password"]), name, username);
     if (!username && !password && !resolved.url && !note && !otp.otp && !name) return;
     logins.push({
