@@ -23,8 +23,9 @@ Not affiliated with Samsung.
 4. Tap **Save for** and pick 1Password, Google Password Manager, Apple Passwords, Bitwarden, or Other (a generic `passwords.csv`).
 5. The vault shows how many logins are ready and across how many places — not the full list up front.
    - **Needs a look** — tap to add a missing title, username, or website. The app never guesses websites, and it never overwrites a real website from your export.
+     For **Google Password Manager**, a login with no website or with a note over 1,000 characters (fewer for non-Latin text; a one-time code counts) is flagged too: Google skips those rows when it imports. You can still save anyway — Google lists them as not imported.
    - **Browse logins** — search and edit ready logins, grouped by website.
-   - If two logins share the same website (or app) **and** the same username, the overview shows one **Possible merges** line. Tap it to see each suggestion, pick which fields to keep, and Merge (with undo). Not the same login? Tap **Dismiss** in the list or the preview to hide that suggestion for this session (with undo). Dismissing never deletes anything.
+   - If two logins share the same website (or app) **and** the same username, the overview shows one **Possible merges** line. Tap it to see each suggestion, pick which fields to keep, and Merge (with undo). Passwords that differ only by leading or trailing spaces are shown as a choice ("spaces differ"), not as the same. Not the same login? Tap **Dismiss** in the list or the preview to hide that suggestion for this session (with undo). Dismissing never deletes anything.
    - Addresses, cards, and notes open from tiles. You can preview them, save a separate CSV, or delete an item (with undo). Bitwarden notes stay in the main file.
 6. Tap **Save CSV** and confirm. A step-by-step guide for your password manager appears — follow it to import.
    - **Other** saves `passwords.csv` (on Android too). If no logins are left, Save CSV says so instead of writing an empty file.

@@ -72,3 +72,11 @@ Synthetic export: generate `/tmp/sample.spass` with `encryptSpass(samplePlaintex
 - [ ] Edit a login (username / website / password / notes): Google or Samsung Pass autofill does not offer to save or fill.
 - [ ] Export-password step: a password manager does not offer to autofill the export password (accepted trade-off).
 - [ ] Username still types lowercase with no autocorrect; keyboard still does not learn typed secrets.
+
+## 2.0.25 checks (APK)
+- [ ] Export password: long-press → Paste works; the keyboard's clipboard chip pastes; Show password reveals it (autofill off must not block paste).
+- [ ] Browse → search with Gboard and Samsung Keyboard: letters never double or jump while typing (the list re-renders per keystroke).
+- [ ] Google selected, a login with no website: "Needs a look" says Google can't import it; Save anyway → import in Chrome → Chrome lists that login as not imported.
+- [ ] Google selected, a login whose note is over 1,000 characters: flagged "Note too long"; Review focuses Notes; shorten → it imports in Chrome.
+- [ ] Merge A+B → open the merged login in Browse → tap Undo on the snackbar: Edit closes and both original logins are back.
+- [ ] Edit → password eye icon: crossed-out eye while hidden, open eye while shown (same as the export password field).

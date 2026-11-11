@@ -15,10 +15,14 @@ Locked by `web/test/csv.test.ts` (exact header strings + no-BOM test).
   (1Password's "You missed required labels… Username, Password, Website") fail to auto-detect the header row.
   Cards/addresses/notes spreadsheets keep the BOM for Excel.
 - No spaces after commas in headers; CRLF line endings; RFC 4180 quoting. Cells with leading/trailing whitespace are quoted (2.0.21) so a password like `" pw "` survives importers that trim unquoted cells; passwords are never trimmed on read either.
-- Title source: Samsung Pass `title`, else `app_name` (app logins often have no title), else the package / URL / username (2.0.23).
+- Title source: Samsung Pass `title`; for app logins, else `app_name` (2.0.23), else the package / raw link / username. Website logins (http(s) URL or bare domain) without a title use the host: their `app_name` / package is the browser that saved them (2.0.25).
 - Non-empty: Title never empty (`displayTitle` → site/username/`no title`); Username never empty (`no username`);
   Google URL never empty (`no url`); others leave blank URL. Password never invented. Pre-save warning stays.
-- TOTP: full `otpauth://` URI goes in OTPAuth (Apple) / Notes as `OTP: …` (1Password) / login_totp (Bitwarden); otherwise appended to notes.
+- Google Password Manager (Chromium `password_importer.cc`) rejects a row with a missing or non-http(s)/android:// URL
+  (so `no url` rows are listed as not imported, never imported), an empty password, or a note / username / password over
+  1,000 bytes (URL 2,048). Spcc flags missing websites and notes over 1,000 UTF-8 bytes (OTP line included) as
+  "Needs a look" for Google, with Save anyway (2.0.25).
+- TOTP: full `otpauth://` URI goes in OTPAuth (Apple) / login_totp (Bitwarden); Google gets `OTP: …` appended to the note. 1Password and Other carry no OTP (stripped in f7070fe for a clean Label step; an OTP warning is a deferred proposal).
 - Any header change must update the golden tests in the same commit.
 
 ## .spass picker

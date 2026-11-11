@@ -111,4 +111,4 @@ export function lookGaps(login: Login, format: FormatId): LoginGap[] {
   return loginGaps({ ...login, siteKeptBlank: false }, format);
 }
 
-export const GAP_TAG: Record<LoginGap, string> = { title: "No title", username: "No username", url: "No website" };
+export const GAP_TAG: Record<LoginGap, string> = { title: "No title", username: "No username", url: "No website", note: "Note too long" };

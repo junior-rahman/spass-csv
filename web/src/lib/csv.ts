@@ -1,4 +1,4 @@
-import { csvUrl, csvUsername, displayTitle, resolvedTitle } from "./model";
+import { csvUrl, csvUsername, displayTitle, noteWithOtp, resolvedTitle } from "./model";
 import type { Address, Card, FormatId, Login, Note, SpassTable } from "./types";
 
 const FORMULA_LEAD = /^[=+\-@\t\r]/;
@@ -22,13 +22,6 @@ export function toCsv(headers: string[], rows: string[][], rawColumns: string[] 
   const body = rows.map((row) => headers.map((_, i) => cell(row[i] ?? "", !raw[i])).join(","));
   const lines = omitHeader ? body : [head, ...body];
   return lines.length ? `${bom ? "\uFEFF" : ""}${lines.join("\r\n")}\r\n` : "";
-}
-
-export function noteWithOtp(note: string, otp: string): string {
-  if (!otp) return note;
-  if (note.includes(otp)) return note;
-  const line = `OTP: ${otp}`;
-  return note ? `${note}\n${line}` : line;
 }
 
 export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): string {

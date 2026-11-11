@@ -2,6 +2,7 @@ import {
   FORMATS,
   GAP_LABEL,
   GAP_TAG,
+  SKIPPABLE_GAPS,
   MAX_SPASS_BYTES,
   MERGE_FIELDS,
   NAMED_FORMATS,
@@ -264,7 +265,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       draft: { name: resolvedTitle(login), url: login.url, username: login.username, password: login.password, note: login.note }
     };
     const gap = lookGaps(login, state.format)[0];
-    state.focusNext = gap === "url" ? "edit-url" : gap === "username" ? "edit-username" : gap === "title" ? "edit-title" : "";
+    state.focusNext = gap === "url" ? "edit-url" : gap === "username" ? "edit-username" : gap === "title" ? "edit-title" : gap === "note" ? "edit-notes" : "";
     render();
   }
 
@@ -683,9 +684,9 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       field("password", "edit-password", "Password", {
         type: s.showPassword ? "text" : "password",
         verbatim: true,
-        trailing: el("button", { type: "button", class: "icon-btn", "aria-label": s.showPassword ? "Hide password" : "Show password", onclick: () => { s.showPassword = !s.showPassword; render(); } }, [icon(s.showPassword ? "visibility_off" : "visibility")])
+        trailing: el("button", { type: "button", class: "icon-btn", "aria-label": s.showPassword ? "Hide password" : "Show password", onclick: () => { s.showPassword = !s.showPassword; render(); } }, [icon(s.showPassword ? "visibility" : "visibility_off")])
       }),
-      field("note", "edit-notes", "Notes", { placeholder: "Optional", multiline: true }),
+      field("note", "edit-notes", "Notes", { placeholder: "Optional", multiline: true, hint: gaps.includes("note") ? "Google skips a login whose note is over 1,000 characters (fewer for non-Latin text, one-time code included). Shorten it so this login imports." : undefined }),
       el("div", { class: "acts" }, [
         el("button", { type: "button", class: "danger-btn", "data-testid": "edit-delete", onclick: () => deleteLogin(login.id) }, ["Delete"]),
         el("button", { type: "button", class: "cta", "data-testid": "edit-save", onclick: () => {
@@ -708,7 +709,9 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const vault = state.vault!;
     const look = needsLook(vault.logins, state.format);
     const n = look.length;
-    const websiteOnly = look.every((l) => lookGaps(l, state.format).every((g) => g === "url"));
+    // Missing website (and, for Google, a too-long note) can still be saved: the importer skips just those rows.
+    const websiteOnly = look.every((l) => lookGaps(l, state.format).every((g) => SKIPPABLE_GAPS.includes(g)));
+    const longNotes = look.some((l) => lookGaps(l, state.format).includes("note"));
     const isOther = state.format === "other";
     const CAP = 50;
     const otherCopy = n === 1
@@ -716,7 +719,9 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       : "These logins are missing a title, username, or website. Add the missing labels, delete those logins, or keep the fields blank.";
     const namedCopy = websiteOnly
       ? state.format === "google"
-        ? "These have no website. Add one, delete them, or save anyway — Google lists them as “no url”."
+        ? longNotes
+          ? "Google Password Manager skips a login with no website or with a note over 1,000 characters. Fix them, delete them, or save anyway and Google leaves them out."
+          : "Google Password Manager can't import a login without a website. Add one, delete them, or save anyway and Google leaves them out."
         : "These have no website. Add one, delete them, or save anyway with the website left blank."
       : "Add the missing title or username, or delete the login, before saving.";
     const addOrReview = () => {
@@ -729,7 +734,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       el("h2", { class: "title" }, [`${plural(n, "login")} ${n === 1 ? "needs" : "need"} a look`]),
       el("p", {}, [isOther ? otherCopy : namedCopy]),
       el("ul", { class: "gap-list", "data-testid": "needs-look-list" }, look.slice(0, CAP).map((l) =>
-        el("li", {}, [el("span", { class: "strong" }, [resolvedTitle(l) || "Untitled login"]), el("span", { class: "muted" }, [` — no ${lookGaps(l, state.format).map((g) => GAP_LABEL[g]).join(", no ")}`])]))),
+        el("li", {}, [el("span", { class: "strong" }, [resolvedTitle(l) || "Untitled login"]), el("span", { class: "muted" }, [` — ${lookGaps(l, state.format).map((g) => GAP_LABEL[g]).join(", ")}`])]))),
       n > CAP ? el("p", { class: "muted" }, [`…and ${n - CAP} more`]) : null,
       el("div", { class: "acts stack" }, isOther
         ? [
@@ -754,8 +759,10 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     if (!a || !b) return [];
     const show = (f: MergeField, l: Login) => f === "password" ? "••••••" : f === "url" ? (hostOf(l.url) || l.url) : l[f].split("\n")[0];
     const rows = MERGE_FIELDS.map((f) => {
-      const va = f === "url" ? hostOf(a.url) || a.url.trim() : a[f].trim();
-      const vb = f === "url" ? hostOf(b.url) || b.url.trim() : b[f].trim();
+      // Passwords compare verbatim: " pw" and "pw" are different secrets (edge spaces are kept since 2.0.21).
+      const value = (l: Login) => f === "url" ? hostOf(l.url) || l.url.trim() : f === "password" ? (l.password.trim() ? l.password : "") : l[f].trim();
+      const va = value(a);
+      const vb = value(b);
       if (!va && !vb) return null;
       if (va === vb) {
         return el("div", { class: "mg-f" }, [el("span", { class: "lbl" }, [FIELD_LABEL[f]]), el("div", { class: "mg-same" }, [el("span", { class: f === "password" ? "dots" : "" }, [show(f, a)]), el("em", {}, ["Same in both"])])]);
@@ -763,10 +770,11 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       const opt = (side: "a" | "b", l: Login) => {
         const sel = s.choice[f] === side;
         const value = l[f].trim();
+        const hint = f === "password" && a.password.trim() === b.password.trim() ? " · spaces differ" : "";
         return el("button", { type: "button", class: sel ? "mg-o sel" : "mg-o", "data-testid": "merge-opt", "data-field": f, "data-side": side, "aria-pressed": sel ? "true" : "false", onclick: () => { s.choice[f] = side; render(); } }, [
           el("i", { "aria-hidden": "true" }, [sel ? icon("check") : null]),
           el("span", { class: f === "password" ? "v dots" : value ? "v" : "v muted" }, [value ? show(f, l) : "Empty"]),
-          f === "password" ? el("span", { class: "muted" }, [`· ${side.toUpperCase()}`]) : null
+          f === "password" ? el("span", { class: "muted" }, [`· ${side.toUpperCase()}${hint}`]) : null
         ]);
       };
       return el("div", { class: "mg-f" }, [el("span", { class: "lbl" }, [FIELD_LABEL[f]]), el("div", { class: "mg-opts" }, [opt("a", a), opt("b", b)])]);
@@ -839,6 +847,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       type: "search",
       "data-testid": "browse-query",
       placeholder: "Find a login",
+      "aria-label": "Find a login",
       autocomplete: "off",
       spellcheck: "false"
     }) as HTMLInputElement;
@@ -1015,7 +1024,16 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     return el("div", { class: "toast", role: "status", "data-testid": "snackbar" }, [
       el("span", {}, [t.text]),
       t.undo ? el("button", { type: "button", "data-testid": "undo", onclick: () => {
+        // An open Edit or Merge sheet was built from logins the undo may replace (e.g. the merged login):
+        // never let it write a stale draft back over the restored record.
+        const open = state.sheet;
+        const refs = open?.kind === "edit" ? [open.id] : open?.kind === "merge" ? [open.aId, open.bId] : [];
+        const before = refs.map(findLogin);
         t.undo!();
+        if (open && state.sheet === open && refs.some((id, i) => findLogin(id) !== before[i])) {
+          if (open.kind === "edit") returnAfter(open.after, open.browseQuery);
+          else state.sheet = open.kind === "merge" && open.fromList ? { kind: "merges" } : null;
+        }
         state.toast = null;
         // The open Save confirm holds a CSV built before the undo; close it so a stale file is never written.
         if (state.sheet?.kind === "save" && state.sheet.primary) state.sheet = null;

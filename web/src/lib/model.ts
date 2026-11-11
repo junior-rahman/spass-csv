@@ -90,8 +90,12 @@ export function toVault(parsed: ParsedSpass, alreadyPlain = false): Vault {
     const username = pick(row, ["username_value", "username", "email", "user_id"]);
     const password = pickExact(row, ["password_value", "password"]);
     const note = pick(row, ["credential_memo", "note", "notes", "memo"]);
-    const name = pick(row, ["title", "name", "display_name", "app_name"]) || resolved.appLabel || rawUrl || username;
-    const otp = otpFields(pick(row, ["otp", "totp", "otp_secret", "one_time_password"]), name, username);
+    // A website login (raw http(s) URL or bare domain) is saved by a browser: its app_name / package is the browser
+    // ("Samsung Internet", com.sec.android.app.sbrowser), never the site. Leave the name empty so the title is the host.
+    const webLogin = /^https?:\/\//i.test(rawUrl) || (!extractPackage(rawUrl) && normalizeUserUrl(rawUrl) !== "");
+    const appLabel = webLogin ? "" : resolved.appLabel;
+    const name = pick(row, ["title", "name", "display_name"]) || (webLogin ? "" : pick(row, ["app_name"]) || appLabel || rawUrl) || (resolved.url ? "" : username);
+    const otp = otpFields(pick(row, ["otp", "totp", "otp_secret", "one_time_password"]), resolvedTitle({ name, url: resolved.url, username, appLabel }), username);
     if (!username && !password && !resolved.url && !note && !otp.otp && !name) return;
     logins.push({
       id: `login-${index}`,
@@ -103,7 +107,7 @@ export function toVault(parsed: ParsedSpass, alreadyPlain = false): Vault {
       otp: otp.otp,
       otpUri: otp.otpUri,
       needsSite: resolved.needsSite,
-      appLabel: resolved.appLabel
+      appLabel
     });
   });
   const cards: Card[] = (table(parsed, "cards")?.rows ?? [])
@@ -165,8 +169,9 @@ export function formatFlagsMissingUrl(_format: FormatId): boolean {
 }
 
 /**
- * Only Google needs a non-empty URL string, so only Google gets the "no url" placeholder.
- * 1Password / Apple / Bitwarden accept an empty website cell; a non-URL string like "no url" blocks 1Password import.
+ * Only Google gets the "no url" placeholder. Google Password Manager does not import a login without an http(s) or
+ * android:// URL at all (Chromium password_importer: MISSING_URL / INVALID_URL); the placeholder makes those rows easy
+ * to recognise in Google's "not imported" list. 1Password / Apple / Bitwarden accept an empty website cell.
  */
 export function formatRequiresUrl(format: FormatId): boolean {
   return format === "google";
@@ -188,18 +193,39 @@ export function displayTitle(login: Pick<Login, "name" | "url" | "username"> & {
   return resolvedTitle(login) || PLACEHOLDER_TITLE;
 }
 
-export type LoginGap = "title" | "username" | "url";
+export type LoginGap = "title" | "username" | "url" | "note";
 
-/** Required CSV fields that are still empty and would receive a placeholder for this format. Password is never listed. */
+/** Appends a one-time-code secret to the note (formats without an OTP column). */
+export function noteWithOtp(note: string, otp: string): string {
+  if (!otp) return note;
+  if (note.includes(otp)) return note;
+  const line = `OTP: ${otp}`;
+  return note ? `${note}\n${line}` : line;
+}
+
+/**
+ * Google Password Manager rejects a CSV row whose note is longer than 1,000 bytes (UTF-8), so the whole login is
+ * skipped (Chromium kMaxPasswordNoteLength, checked on std::string length). The note written includes the OTP line.
+ */
+export const GOOGLE_NOTE_MAX_BYTES = 1000;
+export function googleNoteTooLong(login: Pick<Login, "note" | "otp">): boolean {
+  return new TextEncoder().encode(noteWithOtp(login.note, login.otp)).length > GOOGLE_NOTE_MAX_BYTES;
+}
+
+/** Required CSV fields that are still empty (or, for Google, a note it would reject). Password is never listed. */
 export function loginGaps(login: Login, format: FormatId): LoginGap[] {
   const gaps: LoginGap[] = [];
   if (!resolvedTitle(login)) gaps.push("title");
   if (!login.username.trim()) gaps.push("username");
   if (formatFlagsMissingUrl(format) && !login.url.trim() && !(login.siteKeptBlank && !formatRequiresUrl(format))) gaps.push("url");
+  if (format === "google" && googleNoteTooLong(login)) gaps.push("note");
   return gaps;
 }
 
-export const GAP_LABEL: Record<LoginGap, string> = { title: "title", username: "username", url: "website" };
+/** Short phrase per gap for lists ("Bank — no website, note too long"). */
+export const GAP_LABEL: Record<LoginGap, string> = { title: "no title", username: "no username", url: "no website", note: "note too long for Google" };
+/** Gaps Google can still take as a file: it lists those rows as not imported instead of the whole import failing. */
+export const SKIPPABLE_GAPS: readonly LoginGap[] = ["url", "note"];
 
 export function incompleteLogins(logins: Login[], format: FormatId): Login[] {
   return logins.filter((login) => loginGaps(login, format).length > 0);
