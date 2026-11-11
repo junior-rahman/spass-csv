@@ -123,7 +123,9 @@ describe("import-safe labels", () => {
     const titles = out.slice(1).map((r) => r.split(",")[titleCol[fmt]]);
     expect(titles).toEqual(["github.com", "bob", PLACEHOLDER_TITLE]);
     const users = out.slice(1).map((r) => r.split(",")[userCol[fmt]]);
-    expect(users).toEqual([PLACEHOLDER_USERNAME, "bob", PLACEHOLDER_USERNAME]);
+    // Google and Bitwarden import a blank username (2.0.26); 1Password and Apple keep "no username".
+    const blankUser = fmt === "google" || fmt === "bitwarden" ? "" : PLACEHOLDER_USERNAME;
+    expect(users).toEqual([blankUser, "bob", blankUser]);
   });
 
   it("1password: headerless, 5 columns, never empty title/username", () => {
@@ -183,11 +185,12 @@ describe("import-safe labels", () => {
 
   it("loginGaps and applyPlaceholders follow the locked strings", () => {
     const login = blank({ password: "x" });
-    expect(loginGaps(login, "google")).toEqual(["title", "username", "url"]);
+    expect(loginGaps(login, "google")).toEqual(["title", "url"]);
+    expect(loginGaps(login, "1password")).toEqual(["title", "username", "url"]);
     expect(incompleteLogins([login], "1password")).toHaveLength(1);
     applyPlaceholders(login, "google");
     expect(login.name).toBe(PLACEHOLDER_TITLE);
-    expect(login.username).toBe(PLACEHOLDER_USERNAME);
+    expect(login.username).toBe("");
     expect(login.url).toBe(PLACEHOLDER_URL);
     expect(login.password).toBe("x");
     expect(loginGaps(login, "google")).toEqual([]);

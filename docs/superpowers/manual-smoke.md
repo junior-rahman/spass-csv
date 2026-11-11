@@ -80,3 +80,13 @@ Synthetic export: generate `/tmp/sample.spass` with `encryptSpass(samplePlaintex
 - [ ] Google selected, a login whose note is over 1,000 characters: flagged "Note too long"; Review focuses Notes; shorten → it imports in Chrome.
 - [ ] Merge A+B → open the merged login in Browse → tap Undo on the snackbar: Edit closes and both original logins are back.
 - [ ] Edit → password eye icon: crossed-out eye while hidden, open eye while shown (same as the export password field).
+
+## 2.0.26 checks (APK)
+- [ ] Android 15/16 (gesture and 3-button nav): app draws under transparent bars; no grey scrim behind the 3 buttons; content never under the status bar, cutout or keyboard.
+- [ ] Android 11–14: charcoal status bar; content starts below it; keyboard never covers Edit inputs.
+- [ ] Android 10: charcoal status bar, black navigation bar; keyboard never covers inputs (adjustResize, system-fitted layout).
+- [ ] Vault → Change file → "Leave and clear?" → Stay keeps the vault; Change file goes to the home screen (app stays open).
+- [ ] Merge → Show next to Password reveals both passwords; Hide masks them; reopening Merge starts hidden.
+- [ ] Browse → search "am" → open a login → Delete → back in Browse with "am" still in the search.
+- [ ] Google with a password-only login (no username): not flagged; Chrome imports it with an empty username.
+- [ ] Google with an unmapped app login from a real export: if its link is `android://<hash>@<package>/`, Chrome imports it as an app login (Play Console handoff note: verify on a real export).

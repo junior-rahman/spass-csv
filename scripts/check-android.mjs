@@ -26,7 +26,12 @@ if (!/allowFileAccess = false/.test(activity) || !/allowContentAccess = false/.t
 if (!/isMinifyEnabled = true/.test(gradle)) fail.push("release must enable R8");
 if (!/applicationId = "com.jrrahman.passtocsv"/.test(gradle)) fail.push("applicationId must stay com.jrrahman.passtocsv");
 if (!existsSync("android/app/src/main/res/values-night/themes.xml")) fail.push("night theme missing");
-if (!activity.includes("setOnApplyWindowInsetsListener") || !activity.includes("enableEdgeToEdge")) fail.push("targetSdk 35+ is edge-to-edge: MainActivity must pad the WebView by system-bar/IME insets");
+if (!activity.includes("setOnApplyWindowInsetsListener") || !activity.includes("setDecorFitsSystemWindows(false)")) fail.push("targetSdk 35+ is edge-to-edge: MainActivity must opt in (API 30+) and pad the WebView by system-bar/IME insets");
+// Play "deprecated APIs for edge-to-edge" advisory (2.0.26): none of these in app code or themes.
+const themes = ["values", "values-night"].map((d) => readFileSync(`android/app/src/main/res/${d}/themes.xml`, "utf8")).join("\n").replace(/<!--[\s\S]*?-->/g, "");
+const activityCode = activity.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+if (/enableEdgeToEdge|setStatusBarColor|setNavigationBarColor|setNavigationBarDividerColor|statusBarColor\s*=|navigationBarColor\s*=|LAYOUT_IN_DISPLAY_CUTOUT_MODE|SYSTEM_UI_FLAG_|systemUiVisibility/.test(activityCode)) fail.push("deprecated edge-to-edge window API in MainActivity");
+if (/android:(statusBarColor|navigationBarColor|navigationBarDividerColor|windowLayoutInDisplayCutoutMode|windowTranslucentStatus|windowTranslucentNavigation)/.test(themes)) fail.push("deprecated edge-to-edge theme attribute");
 if (!activity.includes("OnBackPressedCallback") || !activity.includes("spccBack")) fail.push("Back must close open sheets via window.spccBack before exiting");
 if (/isSpassUri\(/.test(activity)) fail.push("non-.spass picks must reach the page so it can show an error (no silent drop in Kotlin)");
 if (!/"leave"/.test(activity)) fail.push("Back confirm: MainActivity must handle the page's {type:\"leave\"} message");

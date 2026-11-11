@@ -116,6 +116,7 @@ describe("empty save", () => {
     click(root, "[data-testid=browse-logins]");
     all(root, "[data-testid=login]")[0].click();
     click(root, "[data-testid=edit-delete]");
+    click(document.body, "[data-testid=sheet-browse] .x");
     click(root, "[data-testid=save]");
     expect(root.querySelector(".sheet")).toBeNull();
     expect(q(root, "[data-testid=snackbar]").textContent).toBe("No logins to save.");

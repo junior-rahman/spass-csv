@@ -63,6 +63,23 @@ export function resolveUrl(raw: string, packageName: string): ResolvedUrl {
   return { url: "", needsSite: true, appLabel: "" };
 }
 
+/**
+ * Mirrors Chromium's affiliations FacetURI::IsValidAndroidFacetURI (affiliation_utils.cc, CanonicalizeAndroidFacetURI):
+ * scheme android, a non-empty hash of only [A-Za-z0-9-_=] whose base64 padding is valid once padded to a multiple of 4,
+ * a non-empty package of only [A-Za-z0-9._], no password / port / query / fragment, path empty or "/".
+ * Returns the link unchanged (Chrome canonicalises it) or "" — a standard-base64 hash with + or / is NOT converted.
+ */
+export function chromeAndroidLink(raw: string): string {
+  const m = /^android:\/\/([^@/:?#]+)@([^/:?#@]+)(\/)?$/i.exec(raw.trim());
+  if (!m) return "";
+  let hash = m[1];
+  if (!/^[A-Za-z0-9\-_=]+$/.test(hash) || !/^[A-Za-z0-9._]+$/.test(m[2])) return "";
+  while (hash.length % 4) hash += "=";
+  const pad = hash.indexOf("=");
+  if (pad >= 0 && (hash.length - pad > 2 || /[^=]/.test(hash.slice(pad)))) return "";
+  return `android://${m[1]}@${m[2]}/`;
+}
+
 export function otpFields(otp: string, name: string, username: string): { otp: string; otpUri: string } {
   const value = otp.trim();
   if (!value) return { otp: "", otpUri: "" };
@@ -97,6 +114,7 @@ export function toVault(parsed: ParsedSpass, alreadyPlain = false): Vault {
     const name = pick(row, ["title", "name", "display_name"]) || (webLogin ? "" : pick(row, ["app_name"]) || appLabel || rawUrl) || (resolved.url ? "" : username);
     const otp = otpFields(pick(row, ["otp", "totp", "otp_secret", "one_time_password"]), resolvedTitle({ name, url: resolved.url, username, appLabel }), username);
     if (!username && !password && !resolved.url && !note && !otp.otp && !name) return;
+    const appLink = webLogin ? "" : chromeAndroidLink(rawUrl);
     logins.push({
       id: `login-${index}`,
       name,
@@ -107,7 +125,8 @@ export function toVault(parsed: ParsedSpass, alreadyPlain = false): Vault {
       otp: otp.otp,
       otpUri: otp.otpUri,
       needsSite: resolved.needsSite,
-      appLabel
+      appLabel,
+      ...(appLink ? { appLink } : {})
     });
   });
   const cards: Card[] = (table(parsed, "cards")?.rows ?? [])
@@ -216,8 +235,8 @@ export function googleNoteTooLong(login: Pick<Login, "note" | "otp">): boolean {
 export function loginGaps(login: Login, format: FormatId): LoginGap[] {
   const gaps: LoginGap[] = [];
   if (!resolvedTitle(login)) gaps.push("title");
-  if (!login.username.trim()) gaps.push("username");
-  if (formatFlagsMissingUrl(format) && !login.url.trim() && !(login.siteKeptBlank && !formatRequiresUrl(format))) gaps.push("url");
+  if (formatRequiresUsername(format) && !login.username.trim()) gaps.push("username");
+  if (formatFlagsMissingUrl(format) && !login.url.trim() && !(login.siteKeptBlank && !formatRequiresUrl(format)) && !(format === "google" && login.appLink)) gaps.push("url");
   if (format === "google" && googleNoteTooLong(login)) gaps.push("note");
   return gaps;
 }
@@ -234,19 +253,31 @@ export function incompleteLogins(logins: Login[], format: FormatId): Login[] {
 /** Fills empty required fields with locked placeholders. Never invents a password. */
 export function applyPlaceholders(login: Login, format: FormatId): void {
   if (!resolvedTitle(login)) login.name = PLACEHOLDER_TITLE;
-  if (!login.username.trim()) login.username = PLACEHOLDER_USERNAME;
-  if (!login.url.trim()) {
+  if (!login.username.trim() && formatRequiresUsername(format)) login.username = PLACEHOLDER_USERNAME;
+  if (!login.url.trim() && !(format === "google" && login.appLink)) {
     if (formatRequiresUrl(format)) login.url = PLACEHOLDER_URL;
     else login.siteKeptBlank = true;
     login.needsSite = false;
   }
 }
 
-export function csvUsername(login: Pick<Login, "username">): string {
-  return login.username.trim() || PLACEHOLDER_USERNAME;
+/**
+ * Google (Chromium password_importer: only password and URL are required) and Bitwarden (BitwardenCsvImporter:
+ * login_username is optional) import a blank username. 1Password and Apple keep the "no username" requirement
+ * (not verifiable from their docs); Other has its own Keep them blank flow.
+ */
+export function formatRequiresUsername(format: FormatId): boolean {
+  return format !== "google" && format !== "bitwarden";
 }
 
-export function csvUrl(login: Pick<Login, "url">, format: FormatId): string {
+export function csvUsername(login: Pick<Login, "username">, format?: FormatId): string {
+  const user = login.username.trim();
+  if (format && !formatRequiresUsername(format)) return user;
+  return user || PLACEHOLDER_USERNAME;
+}
+
+export function csvUrl(login: Pick<Login, "url" | "appLink">, format: FormatId): string {
   if (login.url.trim()) return login.url;
+  if (format === "google" && login.appLink) return login.appLink;
   return formatRequiresUrl(format) ? PLACEHOLDER_URL : "";
 }

@@ -5,8 +5,8 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.os.Build
 import android.os.Bundle
-import android.graphics.Color
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.content.Context
@@ -27,8 +27,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.app.AlertDialog
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.SystemBarStyle
-import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.JavaScriptReplyProxy
@@ -114,12 +112,17 @@ class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION") // allowFile/UniversalAccessFromFileURLs: still set false explicitly for old WebViews
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // targetSdk 35+ is always edge-to-edge: draw charcoal behind the bars and pad the WebView by the
-        // system-bar / cutout / keyboard insets so nothing sits under the status bar or gesture bar.
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
-        )
+        // Edge-to-edge without deprecated window APIs (Play advisory, 2.0.26). androidx.activity's enableEdgeToEdge()
+        // ships EdgeToEdgeApi26–35, which call Window.setStatusBarColor / setNavigationBarColor and set
+        // layoutInDisplayCutoutMode; androidx.core's insets controller adds View.setSystemUiVisibility. Instead:
+        // API 35+ is edge-to-edge by the platform (targetSdk 36); API 30–34 opts in with Window.setDecorFitsSystemWindows;
+        // API 29 keeps the system-fitted layout (only deprecated SYSTEM_UI_FLAG_* can opt in there) with charcoal bars
+        // from the theme's colorPrimaryDark. The WebView is padded by bar / cutout / keyboard insets when edge-to-edge.
+        val edgeToEdge = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        if (edgeToEdge) window.setDecorFitsSystemWindows(false)
+        // Transparent bars stay transparent: no translucent scrim behind 3-button navigation on the charcoal canvas.
+        window.isStatusBarContrastEnforced = false
+        window.isNavigationBarContrastEnforced = false
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         WebView.setWebContentsDebuggingEnabled(false)
         webView = NoLearningWebView(this)
@@ -135,7 +138,7 @@ class MainActivity : ComponentActivity() {
         webView.importantForAutofill = noAutofill
         container.importantForAutofill = noAutofill
         window.decorView.importantForAutofill = noAutofill
-        ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
+        if (edgeToEdge) ViewCompat.setOnApplyWindowInsetsListener(container) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))

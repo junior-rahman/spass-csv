@@ -16,7 +16,14 @@ Locked by `web/test/csv.test.ts` (exact header strings + no-BOM test).
   Cards/addresses/notes spreadsheets keep the BOM for Excel.
 - No spaces after commas in headers; CRLF line endings; RFC 4180 quoting. Cells with leading/trailing whitespace are quoted (2.0.21) so a password like `" pw "` survives importers that trim unquoted cells; passwords are never trimmed on read either.
 - Title source: Samsung Pass `title`; for app logins, else `app_name` (2.0.23), else the package / raw link / username. Website logins (http(s) URL or bare domain) without a title use the host: their `app_name` / package is the browser that saved them (2.0.25).
-- Non-empty: Title never empty (`displayTitle` → site/username/`no title`); Username never empty (`no username`);
+- App links (2.0.26): for Google only, an app login without a website gets the export's own `android://<hash>@<package>/`
+  when it already passes Chromium's `IsValidAndroidFacetURI` (hash of `[A-Za-z0-9-_=]` with valid padding, package of
+  `[A-Za-z0-9._]`, no path/port/query/fragment). The hash is never converted (standard base64 `+ /` is rejected, not
+  rewritten) or invented; anything else stays `no url`. Not verified against a real Samsung export (none decryptable here).
+- Usernames (2.0.26): Google (Chromium `password_importer.cc` requires only password and URL) and Bitwarden
+  (`BitwardenCsvImporter`: `login_username` optional) get a blank username and no warning. 1Password and Apple keep
+  `no username` + the warning (no source or doc confirms a blank username imports). Other keeps its own flow.
+- Non-empty: Title never empty (`displayTitle` → site/username/`no title`); Username never empty for 1Password / Apple (`no username`);
   Google URL never empty (`no url`); others leave blank URL. Password never invented. Pre-save warning stays.
 - Google Password Manager (Chromium `password_importer.cc`) rejects a row with a missing or non-http(s)/android:// URL
   (so `no url` rows are listed as not imported, never imported), an empty password, or a note / username / password over

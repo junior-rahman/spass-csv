@@ -50,7 +50,7 @@ describe("fuzz", () => {
           expect(r.length, f).toBe(COLS[f].n);
           expect(r[COLS[f].pw], f).toBe(v.logins[i].password);
           const u = v.logins[i].username.trim();
-          expect(r[COLS[f].user], f).toBe(u || (f === "other" ? "" : "no username"));
+          expect(r[COLS[f].user], f).toBe(u || (["other", "google", "bitwarden"].includes(f) ? "" : "no username"));
           const note = v.logins[i].note; const safe = /^[=+\-@\t\r]/.test(note) ? `'${note}` : note;
           if (f === "1password" || f === "other") expect(r[4], f + " note").toBe(safe);
           if (f === "bitwarden") expect(r[4], f + " note").toBe(safe);

@@ -78,6 +78,7 @@ export function mergeLogins(a: Login, b: Login, choice: MergeChoice): Login {
     otp: pw.otp || other.otp,
     otpUri: pw.otp ? pw.otpUri : other.otpUri,
     appLabel: a.appLabel || b.appLabel,
+    appLink: a.appLink || b.appLink,
     needsSite: url.trim() === "",
     siteKeptBlank: false
   };

@@ -60,8 +60,8 @@ type Sheet =
   | { kind: "import-guide" }
   | { kind: "edit"; id: string; draft: LoginEdit; showPassword: boolean; after?: AfterEdit; browseQuery?: string; urlError?: boolean }
   | { kind: "merges" }
-  | { kind: "merge"; aId: string; bId: string; choice: MergeChoice; fromList?: boolean }
-  | { kind: "leave" }
+  | { kind: "merge"; aId: string; bId: string; choice: MergeChoice; fromList?: boolean; reveal?: boolean }
+  | { kind: "leave"; changeFile?: boolean }
   | { kind: "extras"; which: "cards" | "notes" | "addresses" };
 
 interface Toast { text: string; undo?: () => void }
@@ -275,13 +275,14 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     else state.sheet = null;
   }
 
-  function deleteLogin(id: string) {
+  /** Deleting from Edit returns to the list Edit was opened from (Browse keeps its search). */
+  function deleteLogin(id: string, after?: AfterEdit, browseQuery = "") {
     const vault = state.vault;
     if (!vault) return;
     const index = vault.logins.findIndex((l) => l.id === id);
     if (index < 0) return;
     const [login] = vault.logins.splice(index, 1);
-    state.sheet = null;
+    returnAfter(after, browseQuery);
     state.toast = {
       text: `Deleted ${resolvedTitle(login) || "Untitled login"}`,
       undo: () => { vault.logins.splice(Math.min(index, vault.logins.length), 0, login); }
@@ -602,7 +603,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       el("header", { class: "vault-head" }, [
         pRingMark(40),
         el("div", { class: "t" }, [el("b", {}, ["Unlocked"]), el("span", { "data-testid": "filename" }, [state.file?.name ?? "export.spass"])]),
-        el("button", { type: "button", class: "text-btn", "data-testid": "change-file", onclick: wipe }, ["Change file"]),
+        el("button", { type: "button", class: "text-btn", "data-testid": "change-file", onclick: () => { state.sheet = { kind: "leave", changeFile: true }; render(); } }, ["Change file"]),
         aboutButton()
       ]),
       organize(vault),
@@ -688,7 +689,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       }),
       field("note", "edit-notes", "Notes", { placeholder: "Optional", multiline: true, hint: gaps.includes("note") ? "Google skips a login whose note is over 1,000 characters (fewer for non-Latin text, one-time code included). Shorten it so this login imports." : undefined }),
       el("div", { class: "acts" }, [
-        el("button", { type: "button", class: "danger-btn", "data-testid": "edit-delete", onclick: () => deleteLogin(login.id) }, ["Delete"]),
+        el("button", { type: "button", class: "danger-btn", "data-testid": "edit-delete", onclick: () => deleteLogin(login.id, s.after, s.browseQuery) }, ["Delete"]),
         el("button", { type: "button", class: "cta", "data-testid": "edit-save", onclick: () => {
           // Never silently erase what was typed: text that isn't a website keeps the sheet open with an error.
           if (s.draft.url.trim() && !normalizeUserUrl(s.draft.url)) {
@@ -722,7 +723,9 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         ? longNotes
           ? "Google Password Manager skips a login with no website or with a note over 1,000 characters. Fix them, delete them, or save anyway and Google leaves them out."
           : "Google Password Manager can't import a login without a website. Add one, delete them, or save anyway and Google leaves them out."
-        : "These have no website. Add one, delete them, or save anyway with the website left blank."
+        : state.format === "apple"
+          ? "These have no website, and Apple Passwords may skip a login without one. Add a website, delete them, or save anyway with the website left blank."
+          : "These have no website. Add one, delete them, or save anyway with the website left blank."
       : "Add the missing title or username, or delete the login, before saving.";
     const addOrReview = () => {
       if (isOther && n > 1) {
@@ -757,7 +760,17 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     const a = findLogin(s.aId);
     const b = findLogin(s.bId);
     if (!a || !b) return [];
-    const show = (f: MergeField, l: Login) => f === "password" ? "••••••" : f === "url" ? (hostOf(l.url) || l.url) : l[f].split("\n")[0];
+    // Passwords stay hidden until "Show" (FLAG_SECURE keeps them out of screenshots); edge spaces are made visible.
+    const shownPassword = (pw: string) => (/^\s|\s$/.test(pw) ? `“${pw}”` : pw);
+    const show = (f: MergeField, l: Login) => f === "password" ? (s.reveal ? shownPassword(l.password) : "••••••") : f === "url" ? (hostOf(l.url) || l.url) : l[f].split("\n")[0];
+    const pwClass = (base: string) => s.reveal ? `${base} pw-shown`.trim() : `${base} dots`.trim();
+    const label = (f: MergeField) => el("span", { class: "lbl" }, [
+      FIELD_LABEL[f],
+      f === "password" ? el("button", {
+        type: "button", class: "text-btn mg-reveal", "data-testid": "merge-reveal", "aria-pressed": s.reveal ? "true" : "false",
+        "aria-label": s.reveal ? "Hide passwords" : "Show passwords", onclick: () => { s.reveal = !s.reveal; render(); }
+      }, [icon(s.reveal ? "visibility" : "visibility_off"), s.reveal ? "Hide" : "Show"]) : null
+    ]);
     const rows = MERGE_FIELDS.map((f) => {
       // Passwords compare verbatim: " pw" and "pw" are different secrets (edge spaces are kept since 2.0.21).
       const value = (l: Login) => f === "url" ? hostOf(l.url) || l.url.trim() : f === "password" ? (l.password.trim() ? l.password : "") : l[f].trim();
@@ -765,7 +778,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
       const vb = value(b);
       if (!va && !vb) return null;
       if (va === vb) {
-        return el("div", { class: "mg-f" }, [el("span", { class: "lbl" }, [FIELD_LABEL[f]]), el("div", { class: "mg-same" }, [el("span", { class: f === "password" ? "dots" : "" }, [show(f, a)]), el("em", {}, ["Same in both"])])]);
+        return el("div", { class: "mg-f" }, [label(f), el("div", { class: "mg-same" }, [el("span", { class: f === "password" ? pwClass("") : "" }, [show(f, a)]), el("em", {}, ["Same in both"])])]);
       }
       const opt = (side: "a" | "b", l: Login) => {
         const sel = s.choice[f] === side;
@@ -773,11 +786,11 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
         const hint = f === "password" && a.password.trim() === b.password.trim() ? " · spaces differ" : "";
         return el("button", { type: "button", class: sel ? "mg-o sel" : "mg-o", "data-testid": "merge-opt", "data-field": f, "data-side": side, "aria-pressed": sel ? "true" : "false", onclick: () => { s.choice[f] = side; render(); } }, [
           el("i", { "aria-hidden": "true" }, [sel ? icon("check") : null]),
-          el("span", { class: f === "password" ? "v dots" : value ? "v" : "v muted" }, [value ? show(f, l) : "Empty"]),
+          el("span", { class: f === "password" ? pwClass("v") : value ? "v" : "v muted" }, [value ? show(f, l) : "Empty"]),
           f === "password" ? el("span", { class: "muted" }, [`· ${side.toUpperCase()}${hint}`]) : null
         ]);
       };
-      return el("div", { class: "mg-f" }, [el("span", { class: "lbl" }, [FIELD_LABEL[f]]), el("div", { class: "mg-opts" }, [opt("a", a), opt("b", b)])]);
+      return el("div", { class: "mg-f" }, [label(f), el("div", { class: "mg-opts" }, [opt("a", a), opt("b", b)])]);
     });
     return [
       el("div", { class: "sheet-head" }, [el("h2", {}, [`Merge ${groupName([a, b])}`]), el("button", { type: "button", class: "x", "aria-label": "Close", onclick: close }, [icon("close")])]),
@@ -956,13 +969,15 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     return false;
   }
 
-  function leaveSheet(close: () => void): (HTMLElement | null)[] {
+  function leaveSheet(s: Extract<Sheet, { kind: "leave" }>, close: () => void): (HTMLElement | null)[] {
     return [
       el("h2", { class: "title" }, ["Leave and clear?"]),
       el("p", {}, ["Your unlocked logins are cleared from this phone's memory. The .spass file isn't changed."]),
       state.saved ? null : el("p", { class: "strong" }, ["You haven't saved a CSV yet."]),
       el("div", { class: "acts" }, [
-        el("button", { type: "button", class: "ghost", "data-testid": "leave", onclick: () => { wipe(); platform.leave?.(); } }, ["Leave"]),
+        s.changeFile
+          ? el("button", { type: "button", class: "ghost", "data-testid": "leave", onclick: wipe }, ["Change file"])
+          : el("button", { type: "button", class: "ghost", "data-testid": "leave", onclick: () => { wipe(); platform.leave?.(); } }, ["Leave"]),
         el("button", { type: "button", class: "cta", "data-testid": "stay", onclick: close }, ["Stay"])
       ])
     ];
@@ -985,7 +1000,7 @@ export function mount(root: HTMLElement, options: MountOptions = {}): ConsoleHan
     else if (s.kind === "merges") body = mergesSheet(close);
     else if (s.kind === "extras") body = extrasSheet(s, close);
     else if (s.kind === "destination") body = destinationSheet(close);
-    else if (s.kind === "leave") body = leaveSheet(close);
+    else if (s.kind === "leave") body = leaveSheet(s, close);
     else if (s.kind === "save") {
       body = [
         el("h2", { class: "title" }, ["Save plain-text CSV?"]),

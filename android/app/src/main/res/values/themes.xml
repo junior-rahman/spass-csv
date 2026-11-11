@@ -4,8 +4,9 @@
     <style name="Theme.PassToCsv" parent="android:Theme.Material.NoActionBar">
         <item name="android:colorPrimary">#D9A55B</item>
         <item name="android:windowBackground">#181716</item>
-        <item name="android:statusBarColor">#181716</item>
-        <item name="android:navigationBarColor">#181716</item>
+        <!-- Status bar on API 29–34 takes colorPrimaryDark (android:statusBarColor / navigationBarColor are deprecated
+             in API 35 and flagged by Play; API 35+ draws transparent bars over the charcoal canvas). -->
+        <item name="android:colorPrimaryDark">#181716</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

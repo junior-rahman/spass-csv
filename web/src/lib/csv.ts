@@ -58,14 +58,14 @@ export function loginsToCsv(logins: Login[], notes: Note[], format: FormatId): s
       "login_uri", "login_username", "login_password", "login_totp"
     ];
     const loginRows = logins.map((l) => [
-      "", "0", "login", displayTitle(l), l.note, "", "0", csvUrl(l, format), csvUsername(l), l.password, l.otpUri || l.otp
+      "", "0", "login", displayTitle(l), l.note, "", "0", csvUrl(l, format), csvUsername(l, format), l.password, l.otpUri || l.otp
     ]);
     const noteRows = notes.map((n) => ["", "0", "note", n.title.trim() || "Note", n.body, "", "0", "", "", "", ""]);
     return toCsv(headers, [...loginRows, ...noteRows], ["login_username", "login_password", "login_totp"], false);
   }
   return toCsv(
     ["name", "url", "username", "password", "note"],
-    logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l), l.password, noteWithOtp(l.note, l.otp)]),
+    logins.map((l) => [displayTitle(l), csvUrl(l, format), csvUsername(l, format), l.password, noteWithOtp(l.note, l.otp)]),
     ["username", "password"],
     false
   );

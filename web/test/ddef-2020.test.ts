@@ -109,12 +109,17 @@ describe("(E) Back asks before leaving the vault", () => {
     expect(left).toEqual([1]);
   });
 
-  it("Change file still resets straight away (no confirm)", async () => {
+  it("Change file in the vault asks Leave and clear? first (2.0.26); Stay keeps the vault", async () => {
     const root = setup();
     await unlock(root, await twoGroups());
     click(root, "[data-testid=change-file]");
+    expect(document.querySelector("[data-testid=sheet-leave] h2")!.textContent).toBe("Leave and clear?");
+    click(document.body, "[data-testid=stay]");
+    expect(root.querySelector("[data-testid=vault]")).not.toBeNull();
+    click(root, "[data-testid=change-file]");
+    expect(document.querySelector("[data-testid=sheet-leave] [data-testid=leave]")!.textContent).toBe("Change file");
+    click(document.body, "[data-testid=leave]");
     expect(root.querySelector("[data-testid=stage-home]")).not.toBeNull();
-    expect(document.querySelector("[data-testid=sheet-leave]")).toBeNull();
   });
 });
 
@@ -152,6 +157,7 @@ describe("(F) Dismiss merge suggestions", () => {
     click(root, "[data-testid=merge-suggestions]");
     click(document.body, "[data-testid=sheet-merge] [data-testid=merge-dismiss]");
     click(root, "[data-testid=change-file]");
+    click(document.body, "[data-testid=leave]");
     await unlock(root, await exportWith([["Amazon", "https://amazon.com", "shop@example.com", "a1", "", ""], ["Amazon 2", "https://www.amazon.com", "shop@example.com", "a2", "", ""]]));
     expect(root.querySelector("[data-testid=merge-suggestions]")).not.toBeNull();
   });

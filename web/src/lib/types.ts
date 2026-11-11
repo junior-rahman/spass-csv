@@ -20,6 +20,11 @@ export interface Login {
   otpUri: string;
   needsSite: boolean;
   appLabel: string;
+  /**
+   * The export's own android:// app link, kept only when it is already in the exact form Chrome's importer accepts as an
+   * Android app credential (android://<base64url hash>@<package>/). Google gets it instead of "no url"; never invented.
+   */
+  appLink?: string;
   /** User chose "Keep" for a login with no website; exported blank (or "no url" for Google). */
   siteKeptBlank?: boolean;
 }

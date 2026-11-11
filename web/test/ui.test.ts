@@ -151,6 +151,7 @@ describe("staged flow", () => {
     const { root } = setup();
     await unlock(root);
     click(root, "[data-testid=change-file]");
+    click(document.body, "[data-testid=leave]");
     expect(root.querySelector("[data-testid=stage-home]")).not.toBeNull();
     expect(root.querySelector("[data-testid=vault]")).toBeNull();
   });

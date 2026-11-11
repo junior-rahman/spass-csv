@@ -66,6 +66,7 @@ describe("privacy races", () => {
     click(root, "[data-testid=save]");
     q<HTMLButtonElement>(document.body, "[data-testid=confirm-save]").click();
     click(root, "[data-testid=change-file]");
+    click(document.body, "[data-testid=leave]");
     finish(true);
     await new Promise((r) => setTimeout(r, 0));
     expect(document.querySelector("[data-testid=sheet-import-guide]")).toBeNull();
